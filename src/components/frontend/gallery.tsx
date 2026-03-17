@@ -193,6 +193,11 @@ function FilterBar({
             selected={dateRange}
             onSelect={onDateRangeSelect}
             numberOfMonths={2}
+            disabled={{ after: new Date() }}
+            endMonth={new Date()}
+            classNames={{
+              day: "[&_button]:cursor-pointer",
+            }}
           />
         </PopoverContent>
       </Popover>
@@ -418,7 +423,7 @@ function GalleryModal({
         {/* Close button - fixed to screen top-right */}
         <button
           onClick={onClose}
-          className="fixed top-6 right-6 z-[110] flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          className="fixed top-6 right-6 z-110 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
         >
           <X className="h-5 w-5" />
         </button>
@@ -461,7 +466,7 @@ function GalleryModal({
           <div className="mt-4 flex items-center gap-6">
             <button
               onClick={goPrev}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -471,7 +476,7 @@ function GalleryModal({
                 <button
                   key={i}
                   onClick={() => setCurrentIndex(i)}
-                  className="flex h-8 w-8 items-center justify-center"
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center"
                 >
                   <span
                     className={cn(
@@ -487,7 +492,7 @@ function GalleryModal({
 
             <button
               onClick={goNext}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
