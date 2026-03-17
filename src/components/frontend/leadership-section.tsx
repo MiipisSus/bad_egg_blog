@@ -2,16 +2,15 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Crown, Shield, Star, Heart, Sparkles, Twitter, Instagram, Linkedin, User } from "lucide-react"
 
 const leaders = [
   {
     id: 1,
     name: "Alexandra Chen",
-    role: "Guild Master",
-    title: "President & Founder",
-    icon: Crown,
+
+
     bgColor: "bg-mint",
+    image: "https://picsum.photos/seed/leader1/800/1200",
     bio: "Alexandra has been leading our community for 3 years with passion and dedication. She specializes in community building, strategic planning, and fostering meaningful connections among members.",
     rank: "Executive Leader",
     social: { twitter: "#", instagram: "#", linkedin: "#" },
@@ -19,10 +18,10 @@ const leaders = [
   {
     id: 2,
     name: "Marcus Rivera",
-    role: "Deputy Leader",
-    title: "Vice President",
-    icon: Shield,
+
+
     bgColor: "bg-lavender",
+    image: "https://picsum.photos/seed/leader2/800/1200",
     bio: "Marcus brings 5 years of experience in team coordination. He ensures smooth operations and supports all club initiatives with unwavering commitment.",
     rank: "Senior Executive",
     social: { twitter: "#", instagram: "#", linkedin: "#" },
@@ -30,10 +29,10 @@ const leaders = [
   {
     id: 3,
     name: "Sophie Williams",
-    role: "Events Director",
-    title: "Head of Events",
-    icon: Star,
+
+
     bgColor: "bg-coral",
+    image: "https://picsum.photos/seed/leader3/800/1200",
     bio: "Sophie is the creative force behind all our memorable events. Her attention to detail and innovative ideas make every gathering special.",
     rank: "Director",
     social: { twitter: "#", instagram: "#", linkedin: "#" },
@@ -41,10 +40,10 @@ const leaders = [
   {
     id: 4,
     name: "James Park",
-    role: "Community Lead",
-    title: "Head of Engagement",
-    icon: Heart,
+
+
     bgColor: "bg-peach",
+    image: "https://picsum.photos/seed/leader4/800/1200",
     bio: "James focuses on member engagement and building meaningful connections within our community. He ensures every member feels valued.",
     rank: "Director",
     social: { twitter: "#", instagram: "#", linkedin: "#" },
@@ -52,10 +51,10 @@ const leaders = [
   {
     id: 5,
     name: "Emily Nakamura",
-    role: "Creative Director",
-    title: "Head of Design",
-    icon: Sparkles,
+
+
     bgColor: "bg-cream",
+    image: "https://picsum.photos/seed/leader5/800/1200",
     bio: "Emily leads the visual identity of our community. Her creative vision transforms every project into something beautiful and memorable.",
     rank: "Director",
     social: { twitter: "#", instagram: "#", linkedin: "#" },
@@ -83,7 +82,6 @@ export function LeadershipSection() {
       <div className="flex flex-1 w-full overflow-hidden">
           {leaders.map((leader) => {
             const isHovered = hoveredId === leader.id
-            const Icon = leader.icon
 
             return (
               <motion.div
@@ -101,100 +99,66 @@ export function LeadershipSection() {
                 className={`relative cursor-pointer overflow-hidden ${leader.bgColor}`}
                 
               >
+                {/* Full-cover background image with dark overlay */}
+                <img
+                  src={leader.image}
+                  alt={leader.name}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/40 transition-opacity duration-300" />
+
                 {/* Soft inner glow */}
                 <div
                   className="pointer-events-none absolute inset-0 z-10"
                   style={{
-                    boxShadow: "inset 0 0 60px rgba(255,255,255,0.3), inset 0 -30px 80px rgba(0,0,0,0.05)",
-                    
+                    boxShadow: "inset 0 0 60px rgba(255,255,255,0.1), inset 0 -30px 80px rgba(0,0,0,0.1)",
                   }}
                 />
 
-                {/* Collapsed State - Vertical Name */}
+                {/* Collapsed State */}
                 <motion.div
                   animate={{ opacity: isHovered ? 0 : 1 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute inset-0 flex flex-col items-center justify-between py-8"
+                  className="absolute inset-0 z-20 flex flex-col items-center justify-end pb-12"
                 >
-                  {/* Top Icon */}
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/40">
-                    <Icon className="h-7 w-7 text-foreground/70" />
-                  </div>
-
-                  {/* Vertical Name */}
-                  <div
-                    className="flex flex-1 items-center justify-center"
-                    style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
-                  >
-                    <span className="text-xl font-bold tracking-wide text-foreground/90">
-                      {leader.name}
-                    </span>
-                  </div>
-
-                  {/* Bottom Avatar Hint */}
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/30">
-                    <User className="h-10 w-10 text-foreground/50" />
-                  </div>
+                  <span className="mb-2 rounded-full bg-white/20 px-4 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
+                    {leader.rank}
+                  </span>
+                  <span className="text-center text-xl font-bold tracking-wide text-white drop-shadow-md">
+                    {leader.name}
+                  </span>
                 </motion.div>
 
-                {/* Expanded State - Full Content */}
+                {/* Expanded State - Image left, details right */}
                 <motion.div
                   animate={{ opacity: isHovered ? 1 : 0 }}
                   transition={{ duration: 0.3, delay: isHovered ? 0.1 : 0 }}
-                  className="absolute inset-0 flex"
+                  className="absolute inset-0 z-20 flex"
                 >
-                  {/* Left: Photo Area */}
-                  <div className="flex w-2/5 flex-col items-center justify-center bg-white/20 p-6">
-                    <div className="flex h-32 w-32 items-center justify-center rounded-3xl bg-white/50 shadow-lg">
-                      <User className="h-16 w-16 text-foreground/60" />
-                    </div>
-                    <h3 className="mt-4 text-center text-2xl font-bold text-foreground">
-                      {leader.name}
-                    </h3>
-                    <p className="mt-1 text-center text-sm font-medium text-foreground/70">
-                      {leader.title}
-                    </p>
+                  {/* Left: Photo - image shows through with lighter overlay */}
+                  <div className="relative w-1/2">
+                    <div className="absolute inset-0 bg-black/10" />
                   </div>
 
-                  {/* Right: Details */}
-                  <div className="flex w-3/5 flex-col justify-center p-8">
+                  {/* Right: Details - transparent bg, white text */}
+                  <div className="flex w-1/2 flex-col justify-center p-8">
                     {/* Rank Badge */}
-                    <div className="mb-4 flex items-center gap-2">
-                      <Icon className="h-5 w-5 text-foreground/80" />
-                      <span className="rounded-full bg-white/40 px-4 py-1.5 text-sm font-semibold text-foreground">
+                    <div className="mb-4">
+                      <span className="rounded-full bg-white/20 px-4 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
                         {leader.rank}
                       </span>
                     </div>
 
-                    {/* Role */}
-                    <h4 className="text-lg font-semibold text-foreground/90">{leader.role}</h4>
+                    {/* Name */}
+                    <h3 className="text-2xl font-bold text-white">
+                      {leader.name}
+                    </h3>
 
                     {/* Bio */}
-                    <p className="mt-4 text-sm leading-relaxed text-foreground/80">
+                    <p className="mt-4 text-sm leading-relaxed text-white/80">
                       {leader.bio}
                     </p>
 
-                    {/* Social Icons */}
-                    <div className="mt-6 flex gap-3">
-                      <a
-                        href={leader.social.twitter}
-                        className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/40 text-foreground transition-all hover:scale-110 hover:bg-white/60"
-                      >
-                        <Twitter className="h-5 w-5" />
-                      </a>
-                      <a
-                        href={leader.social.instagram}
-                        className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/40 text-foreground transition-all hover:scale-110 hover:bg-white/60"
-                      >
-                        <Instagram className="h-5 w-5" />
-                      </a>
-                      <a
-                        href={leader.social.linkedin}
-                        className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/40 text-foreground transition-all hover:scale-110 hover:bg-white/60"
-                      >
-                        <Linkedin className="h-5 w-5" />
-                      </a>
-                    </div>
                   </div>
                 </motion.div>
               </motion.div>
