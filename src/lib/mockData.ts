@@ -59,3 +59,60 @@ export const mockCommunityMembers: Member[] = [
 ]
 
 export const mockAllMembers: Member[] = [...mockLeaders, ...mockCommunityMembers]
+
+// Gallery mock data
+export interface GalleryPhoto {
+  id: number
+  src: string
+  alt: string
+  width: number
+  height: number
+  date: string // ISO date string
+  category: string
+}
+
+const categories = ["Events", "Workshops", "Gatherings", "Behind the Scenes"]
+
+// Generate random heights for masonry effect
+const photoSizes: [number, number][] = [
+  [400, 600], [400, 300], [400, 500], [400, 400],
+  [400, 350], [400, 550], [400, 450], [400, 300],
+  [400, 500], [400, 600], [400, 350], [400, 400],
+  [400, 550], [400, 300], [400, 450], [400, 500],
+  [400, 600], [400, 350], [400, 400], [400, 500],
+  [400, 300], [400, 550], [400, 450], [400, 600],
+]
+
+export const mockGalleryPhotos: GalleryPhoto[] = photoSizes.map(([w, h], i) => ({
+  id: i + 1,
+  src: `https://picsum.photos/seed/gallery${i + 1}/${w}/${h}`,
+  alt: `Gallery photo ${i + 1}`,
+  width: w,
+  height: h,
+  date: generateRandomDate(i),
+  category: categories[i % categories.length],
+}))
+
+function generateRandomDate(seed: number): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth()
+  const day = now.getDate()
+
+  // Spread photos across: today, this month, this year, and older
+  if (seed < 4) {
+    // Today
+    return new Date(year, month, day, 10 + seed).toISOString()
+  } else if (seed < 10) {
+    // This month
+    const d = Math.max(1, day - (seed * 2))
+    return new Date(year, month, d).toISOString()
+  } else if (seed < 18) {
+    // This year
+    const m = Math.max(0, month - (seed - 9))
+    return new Date(year, m, 15).toISOString()
+  } else {
+    // Last year
+    return new Date(year - 1, 11 - (seed - 18), 10).toISOString()
+  }
+}

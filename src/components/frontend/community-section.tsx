@@ -37,7 +37,7 @@ export function CommunitySection() {
         </div>
 
         {/* Large Grid - 3 or 4 columns */}
-        <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {communityMembers.map((member) => (
             <MemberCard key={member.id} member={member} />
           ))}

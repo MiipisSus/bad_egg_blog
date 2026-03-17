@@ -68,7 +68,7 @@ export function LeadershipSection() {
         </div>
 
         {/* Horizontal Accordion */}
-        <div className="flex h-[500px] gap-2 overflow-hidden">
+        <div className="flex h-125 gap-2 overflow-hidden">
           {leaders.map((leader) => {
             const isHovered = hoveredId === leader.id
             const Icon = leader.icon
@@ -87,14 +87,14 @@ export function LeadershipSection() {
                   damping: 25,
                 }}
                 className={`relative cursor-pointer overflow-hidden ${leader.bgColor}`}
-                style={{ borderRadius: "32px" }}
+                style={{ borderRadius: "14px" }}
               >
                 {/* Soft inner glow */}
                 <div
                   className="pointer-events-none absolute inset-0 z-10"
                   style={{
                     boxShadow: "inset 0 0 60px rgba(255,255,255,0.3), inset 0 -30px 80px rgba(0,0,0,0.05)",
-                    borderRadius: "32px",
+                    borderRadius: "14px",
                   }}
                 />
 
