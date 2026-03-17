@@ -100,8 +100,8 @@ const photoSizes: [number, number][] = [
 ]
 
 export const mockGalleryPhotos: GalleryPhoto[] = photoSizes.map(([w, h], i) => {
-  // Mix of single photos and albums: every 3rd card is single
-  const imageCount = i % 3 === 0 ? 1 : 3 + (i % 4)
+  // Mix of single photos and albums: every 4th card is single
+  const imageCount = i % 4 === 0 ? 1 : 4 + (i % 5)
   const images = Array.from({ length: imageCount }, (_, j) =>
     `https://picsum.photos/seed/gallery${i + 1}_${j}/${w}/${h}`
   )

@@ -294,11 +294,11 @@ function GalleryCard({
         <>
           <div
             className="absolute inset-4 -z-20 bg-white shadow-md transition-all duration-300 ease-out group-hover:scale-105 group-hover:shadow-lg"
-            style={{ transform: "rotate(-6deg) translate(-8px, 8px)" }}
+            style={{ transform: "rotate(-2deg) translate(-2px, 2px)" }}
           />
           <div
             className="absolute inset-4 -z-10 bg-white shadow-md transition-all duration-300 ease-out group-hover:scale-105 group-hover:shadow-lg"
-            style={{ transform: "rotate(4deg) translate(4px, -4px)" }}
+            style={{ transform: "rotate(2deg) translate(2px, -2px)" }}
           />
         </>
       )}
