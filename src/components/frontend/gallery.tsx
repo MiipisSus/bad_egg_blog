@@ -8,6 +8,7 @@ import Image from "next/image"
 
 import gsap from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
+import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 gsap.registerPlugin(ScrollTrigger)
@@ -404,6 +405,25 @@ function GalleryCard({
 
 // ─── Fullscreen Modal ────────────────────────────────────────────────
 
+// Full-viewport polaroid swap variants
+const polaroidSwapVariants = {
+  enter: (dir: number) => ({
+    x: dir > 0 ? "100vw" : "-100vw",
+    rotate: dir > 0 ? 12 : -12,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    rotate: 0,
+    opacity: 1,
+  },
+  exit: (dir: number) => ({
+    x: dir > 0 ? "-100vw" : "100vw",
+    rotate: dir > 0 ? -12 : 12,
+    opacity: 0,
+  }),
+}
+
 function GalleryModal({
   photo,
   initialIndex,
@@ -414,15 +434,23 @@ function GalleryModal({
   onClose: () => void
 }) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
+  const [direction, setDirection] = useState(0)
   const isMulti = photo.images.length > 1
 
   const goNext = useCallback(() => {
+    setDirection(1)
     setCurrentIndex((prev) => (prev + 1) % photo.images.length)
   }, [photo.images.length])
 
   const goPrev = useCallback(() => {
+    setDirection(-1)
     setCurrentIndex((prev) => (prev - 1 + photo.images.length) % photo.images.length)
   }, [photo.images.length])
+
+  const goTo = useCallback((i: number) => {
+    setDirection(i > currentIndex ? 1 : -1)
+    setCurrentIndex(i)
+  }, [currentIndex])
 
   // Keyboard navigation
   useEffect(() => {
@@ -443,59 +471,79 @@ function GalleryModal({
 
   return (
     <div
-      className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-100 bg-black/80 backdrop-blur-sm"
       onClick={onClose}
     >
-      <div
-        className="relative flex max-h-[90vh] w-full max-w-5xl flex-col items-center px-4"
-        onClick={(e) => e.stopPropagation()}
+      {/* Close button - fixed to screen top-right */}
+      <button
+        onClick={onClose}
+        className="fixed top-6 right-6 z-110 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
       >
-        {/* Close button - fixed to screen top-right */}
-        <button
-          onClick={onClose}
-          className="fixed top-6 right-6 z-110 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+        <X className="h-5 w-5" />
+      </button>
+
+      {/* Full-viewport animation stage - no overflow clipping */}
+      <div className="pointer-events-none fixed inset-0 flex flex-col items-center justify-center">
+        {/* Polaroid animation area */}
+        <div
+          className="relative"
+          style={{
+            height: "70vh",
+            aspectRatio: `${photo.width}/${photo.height}`,
+          }}
         >
-          <X className="h-5 w-5" />
-        </button>
+          <AnimatePresence initial={false} custom={direction} mode="popLayout">
+            <motion.div
+              key={`${currentIndex}-${photo.images[currentIndex]}`}
+              custom={direction}
+              variants={polaroidSwapVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{
+                type: "spring",
+                stiffness: 80,
+                damping: 20,
+                mass: 1,
+              }}
+              className="pointer-events-auto absolute inset-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Entire polaroid frame as one animated unit */}
+              <div className="h-full w-full bg-white p-3 pb-14 shadow-[0_12px_40px_rgb(0,0,0,0.3)]">
+                <div className="relative h-full w-full overflow-hidden">
+                  <Image
+                    src={photo.images[currentIndex]}
+                    alt={`${photo.albumTitle} ${currentIndex + 1}`}
+                    fill
+                    sizes="(max-width: 1280px) 90vw, 1200px"
+                    className="object-cover"
+                    priority
+                  />
 
-        {/* Polaroid frame for modal */}
-        <div className="relative bg-white p-3 pb-14 shadow-[0_12px_40px_rgb(0,0,0,0.3)]">
-          {/* Image container - forced to fill 70vh, width follows aspect ratio */}
-          <div
-            className="relative"
-            style={{
-              height: "70vh",
-              aspectRatio: `${photo.width}/${photo.height}`,
-            }}
-          >
-            <Image
-              src={photo.images[currentIndex]}
-              alt={`${photo.albumTitle} ${currentIndex + 1}`}
-              fill
-              sizes="(max-width: 1280px) 90vw, 1200px"
-              className="object-cover transition-opacity duration-300"
-            />
-
-            {/* Album info - right bottom inset, frosted glass */}
-            <div className="absolute bottom-3 right-3 max-w-[60%] rounded-lg px-4 py-2.5 text-right">
-              <p
-                className="text-4xl text-white"
-                style={{ fontFamily: "'Mantou Sans', sans-serif" }}
-              >
-                {photo.albumTitle}
-              </p>
-              <p className="mt-0.5 text-md text-white/70">
-                {photo.description}
-              </p>
-            </div>
-          </div>
+                  {/* Album info - right bottom inset */}
+                  <div className="absolute bottom-3 right-3 z-10 max-w-[60%] rounded-lg px-4 py-2.5 text-right">
+                    <p
+                      className="text-4xl text-white"
+                      style={{ fontFamily: "'Mantou Sans', sans-serif" }}
+                    >
+                      {photo.albumTitle}
+                    </p>
+                    <p className="mt-0.5 text-md text-white/70">
+                      {photo.description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         {/* Bottom navigation - only for multi-image albums */}
         {isMulti && (
-          <div className="mt-4 flex items-center gap-6">
+          <div className="pointer-events-auto relative z-10 mt-4 flex items-center gap-6">
             <button
-              onClick={goPrev}
+              onClick={(e) => { e.stopPropagation(); goPrev() }}
               className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
             >
               <ChevronLeft className="h-5 w-5" />
@@ -505,7 +553,7 @@ function GalleryModal({
               {photo.images.map((_, i) => (
                 <button
                   key={i}
-                  onClick={() => setCurrentIndex(i)}
+                  onClick={(e) => { e.stopPropagation(); goTo(i) }}
                   className="flex h-8 w-8 cursor-pointer items-center justify-center"
                 >
                   <span
@@ -521,7 +569,7 @@ function GalleryModal({
             </div>
 
             <button
-              onClick={goNext}
+              onClick={(e) => { e.stopPropagation(); goNext() }}
               className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
             >
               <ChevronRight className="h-5 w-5" />
@@ -531,7 +579,7 @@ function GalleryModal({
 
         {/* Counter - only for multi-image */}
         {isMulti && (
-          <p className="mt-3 text-xs text-white/40">
+          <p className="pointer-events-auto relative z-10 mt-3 text-xs text-white/40">
             {currentIndex + 1} / {photo.images.length}
           </p>
         )}
