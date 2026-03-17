@@ -71,7 +71,7 @@ export interface GalleryPhoto {
   category: string
 }
 
-const categories = ["Events", "Workshops", "Gatherings", "Behind the Scenes"]
+const categories = ["活動！", "聚會！", "下午茶！", "幕後花絮！"]
 
 // Generate random heights for masonry effect
 const photoSizes: [number, number][] = [

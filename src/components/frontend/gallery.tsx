@@ -190,52 +190,102 @@ function FilterBar({
 function GalleryCard({ photo }: { photo: GalleryPhoto }) {
   const [isLoaded, setIsLoaded] = useState(false)
 
+  const themeColors = ["var(--mint)", "var(--lavender)", "var(--peach)", "var(--cream)", "var(--coral)"]
+
+  // Stable random rotation between -2 and 2 degrees per card
+  const { rotation, titleColor } = useMemo(() => {
+    const seed = photo.id * 9301 + 49297
+    return {
+      rotation: ((seed % 4001) / 1000) - 2,
+      titleColor: themeColors[seed % themeColors.length],
+    }
+  }, [photo.id])
+
   return (
-    <div className="group mb-4 break-inside-avoid">
-      <div
-        className="relative overflow-hidden bg-cream/50"
-        style={{ aspectRatio: `${photo.width}/${photo.height}` }}
-      >
-        <Image
-          src={photo.src}
-          alt={photo.alt}
-          fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-          className={cn(
-            "object-cover transition-all duration-500 ease-out",
-            "group-hover:scale-105",
-            isLoaded ? "opacity-100" : "opacity-0"
-          )}
-          onLoad={() => setIsLoaded(true)}
-        />
+    <div
+      className="group relative mb-6 break-inside-avoid p-4 transition-all duration-300 ease-out hover:z-50"
+      style={{ transform: `rotate(${rotation}deg)` }}
+    >
+      {/* Polaroid frame */}
+      <div className="relative bg-white p-4 pb-16 shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 ease-out group-hover:scale-105 group-hover:shadow-[0_16px_50px_rgb(0,0,0,0.2)]">
+        {/* Image container - natural aspect ratio */}
+        <div
+          className="relative w-full overflow-hidden border border-slate-100"
+          style={{ aspectRatio: `${photo.width}/${photo.height}` }}
+        >
+          <Image
+            src={photo.src}
+            alt={photo.alt}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+            className={cn(
+              "object-cover transition-all duration-500 ease-out",
+              "group-hover:scale-105",
+              isLoaded ? "opacity-100" : "opacity-0"
+            )}
+            onLoad={() => setIsLoaded(true)}
+          />
 
-        {/* Hover overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          {/* Paper grain texture overlay */}
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-multiply"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+            }}
+          />
 
-        {/* Info on hover */}
-        <div className="absolute bottom-0 left-0 right-0 translate-y-2 p-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-          <span className="inline-block rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-foreground backdrop-blur-sm">
-            {photo.category}
-          </span>
-          <p className="mt-1 text-xs text-white/80">
-            {format(new Date(photo.date), "yyyy/MM/dd")}
-          </p>
+          {/* Hover overlay */}
+          <div className="absolute inset-0 bg-linear-to-t from-black/30 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         </div>
+
+        {/* Title - overlapping left bottom, tilted */}
+        <p
+          className="absolute bottom-12 left-4 -rotate-6 text-3xl"
+          style={{
+            fontFamily: "'Mantou Sans', sans-serif",
+            color: titleColor,
+            WebkitTextStroke: "4px white",
+            paintOrder: "stroke fill",
+          }}
+        >
+          {photo.category}
+        </p>
+
+        {/* Date - right bottom, aligned with frame */}
+        <p
+          className="absolute bottom-3 right-3 text-sm text-stone-300"
+          style={{
+            fontFamily: "'Mantou Sans', sans-serif",
+            WebkitTextStroke: "4px white",
+            paintOrder: "stroke fill",
+          }}
+        >
+          {format(new Date(photo.date), "yyyy / MM / dd")}
+        </p>
       </div>
     </div>
   )
 }
 
 function MasonrySkeleton() {
-  const heights = [300, 400, 350, 500, 300, 450, 400, 350, 500, 300, 400, 350]
+  const rotations = [-1.5, 0.8, -0.5, 1.2, -1, 0.3, 1.8, -0.8, 0.5, -1.2, 1.5, -0.3]
+  const heights = [300, 220, 280, 350, 240, 300, 260, 320, 280, 340, 220, 300]
   return (
     <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
-      {heights.map((h, i) => (
+      {rotations.map((rot, i) => (
         <div
           key={i}
-          className="mb-4 break-inside-avoid animate-pulse rounded-3xl bg-cream/50"
-          style={{ height: `${h}px` }}
-        />
+          className="mb-6 break-inside-avoid p-4"
+          style={{ transform: `rotate(${rot}deg)` }}
+        >
+          <div className="animate-pulse bg-white p-3 pb-12 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+            <div className="bg-slate-100" style={{ height: `${heights[i]}px` }} />
+            <div className="mt-2 flex flex-col items-center gap-1.5">
+              <div className="h-4 w-20 rounded bg-slate-100" />
+              <div className="h-3 w-24 rounded bg-slate-50" />
+            </div>
+          </div>
+        </div>
       ))}
     </div>
   )
