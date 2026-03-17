@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Crown, Shield, Star, Heart, Twitter, Instagram, Linkedin, User } from "lucide-react"
+import { Crown, Shield, Star, Heart, Sparkles, Twitter, Instagram, Linkedin, User } from "lucide-react"
 
 const leaders = [
   {
@@ -49,13 +49,24 @@ const leaders = [
     rank: "Director",
     social: { twitter: "#", instagram: "#", linkedin: "#" },
   },
+  {
+    id: 5,
+    name: "Emily Nakamura",
+    role: "Creative Director",
+    title: "Head of Design",
+    icon: Sparkles,
+    bgColor: "bg-cream",
+    bio: "Emily leads the visual identity of our community. Her creative vision transforms every project into something beautiful and memorable.",
+    rank: "Director",
+    social: { twitter: "#", instagram: "#", linkedin: "#" },
+  },
 ]
 
 export function LeadershipSection() {
   const [hoveredId, setHoveredId] = useState<number | null>(null)
 
   return (
-    <section className="bg-cream/50 py-20">
+    <section className="flex min-h-[95vh] flex-col bg-cream/50 pt-20">
       <div className="container mx-auto px-6">
         {/* Section Header */}
         <div className="mb-12 text-center">
@@ -66,9 +77,10 @@ export function LeadershipSection() {
             The dedicated individuals guiding our community forward
           </p>
         </div>
+      </div>
 
-        {/* Horizontal Accordion */}
-        <div className="flex h-125 gap-2 overflow-hidden">
+      {/* Horizontal Accordion - full width */}
+      <div className="flex flex-1 w-full overflow-hidden">
           {leaders.map((leader) => {
             const isHovered = hoveredId === leader.id
             const Icon = leader.icon
@@ -87,14 +99,14 @@ export function LeadershipSection() {
                   damping: 25,
                 }}
                 className={`relative cursor-pointer overflow-hidden ${leader.bgColor}`}
-                style={{ borderRadius: "14px" }}
+                
               >
                 {/* Soft inner glow */}
                 <div
                   className="pointer-events-none absolute inset-0 z-10"
                   style={{
                     boxShadow: "inset 0 0 60px rgba(255,255,255,0.3), inset 0 -30px 80px rgba(0,0,0,0.05)",
-                    borderRadius: "14px",
+                    
                   }}
                 />
 
@@ -190,7 +202,6 @@ export function LeadershipSection() {
           })}
         </div>
 
-      </div>
     </section>
   )
 }
