@@ -91,12 +91,6 @@ export function Gallery() {
     <>
       <section className="min-h-screen bg-accent pb-20 pt-32" style={{ backgroundImage: "url('/assets/images/white-brick-wall.png')", backgroundRepeat: "repeat", backgroundSize: "50px" }}>
         <div className="container mx-auto px-4 md:px-6">
-          {/* Page Header */}
-          <div className="mb-12 text-center">
-            <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
-              畫廊（素材替代）
-            </h1>
-          </div>
 
           {/* Filter Bar */}
           <FilterBar
@@ -157,10 +151,10 @@ function FilterBar({
           variant="ghost"
           onClick={() => onFilterClick(option.value)}
           className={cn(
-            "rounded-full px-5 py-2 text-sm font-medium transition-all",
+            "cursor-pointer rounded-full px-5 py-2 text-sm font-medium transition-all",
             activeFilter === option.value
-              ? "bg-mint/60 text-foreground shadow-sm"
-              : "bg-cream/60 text-foreground/70 hover:bg-cream hover:text-foreground"
+              ? "bg-mint text-foreground shadow-sm hover:bg-mint"
+              : "bg-white text-foreground/70 hover:bg-cream hover:text-foreground"
           )}
         >
           {option.label}
@@ -173,10 +167,10 @@ function FilterBar({
           <Button
             variant="ghost"
             className={cn(
-              "rounded-full px-5 py-2 text-sm font-medium transition-all",
+              "cursor-pointer rounded-full px-5 py-2 text-sm font-medium transition-all",
               activeFilter === "custom"
-                ? "bg-mint/60 text-foreground shadow-sm"
-                : "bg-cream/60 text-foreground/70 hover:bg-cream hover:text-foreground"
+                ? "bg-mint text-foreground shadow-sm hover:bg-mint"
+                : "bg-white text-foreground/70 hover:bg-cream hover:text-foreground"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
@@ -284,7 +278,7 @@ function GalleryCard({
 
   return (
     <div
-      className="group relative mb-6 break-inside-avoid p-4 transition-all duration-300 ease-out hover:z-50"
+      className="group relative mb-6 break-inside-avoid p-4 transition-all duration-300 ease-out hover:z-40"
       style={{ transform: `rotate(${rotation}deg)` }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -342,22 +336,6 @@ function GalleryCard({
           {/* Hover overlay */}
           <div className="absolute inset-0 bg-linear-to-t from-black/30 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-          {/* Image counter dots */}
-          {photo.images.length > 1 && (
-            <div className="absolute bottom-2 left-2 flex gap-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-              {photo.images.map((_, i) => (
-                <span
-                  key={i}
-                  className={cn(
-                    "block h-1.5 rounded-full transition-all",
-                    i === currentIndex
-                      ? "w-3 bg-white"
-                      : "w-1.5 bg-white/50"
-                  )}
-                />
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Title - overlapping left bottom, tilted */}
@@ -401,6 +379,7 @@ function GalleryModal({
   onClose: () => void
 }) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
+  const isMulti = photo.images.length > 1
 
   const goNext = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % photo.images.length)
@@ -429,85 +408,98 @@ function GalleryModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
         className="relative flex max-h-[90vh] w-full max-w-5xl flex-col items-center px-4"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button */}
+        {/* Close button - fixed to screen top-right */}
         <button
           onClick={onClose}
-          className="absolute -top-2 right-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          className="fixed top-6 right-6 z-[110] flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
         >
           <X className="h-5 w-5" />
         </button>
 
-        {/* Main image - auto-fit to content */}
-        <div className="relative">
-          <Image
-            src={photo.images[currentIndex]}
-            alt={`${photo.albumTitle} ${currentIndex + 1}`}
-            width={photo.width}
-            height={photo.height}
-            sizes="(max-width: 1280px) 90vw, 1024px"
-            className="max-h-[75vh] w-auto rounded-lg object-contain transition-opacity duration-300"
-          />
+        {/* Polaroid frame for modal */}
+        <div className="relative bg-white p-3 pb-14 shadow-[0_12px_40px_rgb(0,0,0,0.3)]">
+          {/* Image container - forced to fill 70vh, width follows aspect ratio */}
+          <div
+            className="relative"
+            style={{
+              height: "70vh",
+              aspectRatio: `${photo.width}/${photo.height}`,
+            }}
+          >
+            <Image
+              src={photo.images[currentIndex]}
+              alt={`${photo.albumTitle} ${currentIndex + 1}`}
+              fill
+              sizes="(max-width: 1280px) 90vw, 1200px"
+              className="object-cover transition-opacity duration-300"
+            />
 
-          {/* Album info - right bottom inset, frosted glass */}
-          <div className="absolute bottom-3 right-3 max-w-[60%] rounded-lg bg-black/40 px-4 py-2.5 backdrop-blur-md">
-            <p
-              className="text-lg text-white"
-              style={{ fontFamily: "'Mantou Sans', sans-serif" }}
+            {/* Album info - right bottom inset, frosted glass */}
+            <div className="absolute bottom-3 right-3 max-w-[60%] rounded-lg px-4 py-2.5 text-right">
+              <p
+                className="text-4xl text-white"
+                style={{ fontFamily: "'Mantou Sans', sans-serif" }}
+              >
+                {photo.albumTitle}
+              </p>
+              <p className="mt-0.5 text-md text-white/70">
+                {photo.description}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom navigation - only for multi-image albums */}
+        {isMulti && (
+          <div className="mt-4 flex items-center gap-6">
+            <button
+              onClick={goPrev}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
             >
-              {photo.albumTitle}
-            </p>
-            <p className="mt-0.5 text-xs text-white/70">
-              {photo.description}
-            </p>
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              {photo.images.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentIndex(i)}
+                  className="flex h-8 w-8 items-center justify-center"
+                >
+                  <span
+                    className={cn(
+                      "block rounded-full transition-all",
+                      i === currentIndex
+                        ? "h-3.5 w-3.5 bg-white"
+                        : "h-2.5 w-2.5 bg-white/40 hover:bg-white/60"
+                    )}
+                  />
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={goNext}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
           </div>
-        </div>
+        )}
 
-        {/* Bottom navigation bar */}
-        <div className="mt-4 flex items-center gap-6">
-          {/* Prev button */}
-          <button
-            onClick={goPrev}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-
-          {/* Pagination dots */}
-          <div className="flex items-center gap-2">
-            {photo.images.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentIndex(i)}
-                className={cn(
-                  "rounded-full transition-all",
-                  i === currentIndex
-                    ? "h-3 w-3 bg-white"
-                    : "h-2 w-2 bg-white/40 hover:bg-white/60"
-                )}
-              />
-            ))}
-          </div>
-
-          {/* Next button */}
-          <button
-            onClick={goNext}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Counter only */}
-        <p className="mt-3 text-xs text-white/40">
-          {currentIndex + 1} / {photo.images.length}
-        </p>
+        {/* Counter - only for multi-image */}
+        {isMulti && (
+          <p className="mt-3 text-xs text-white/40">
+            {currentIndex + 1} / {photo.images.length}
+          </p>
+        )}
       </div>
     </div>
   )
