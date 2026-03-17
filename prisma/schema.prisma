@@ -1,0 +1,24 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Member {
+  id        Int      @id @default(autoincrement())
+  name      String
+  role      String
+  title     String?
+  bio       String?
+  rank      String?
+  bgColor   String   @default("bg-mint")
+  twitter   String?
+  instagram String?
+  linkedin  String?
+  type      String   @default("community") // "leader" | "community"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
