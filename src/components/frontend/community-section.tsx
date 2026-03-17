@@ -1,21 +1,18 @@
 "use client"
 
-import { motion } from "framer-motion"
-import { User } from "lucide-react"
-
 const communityMembers = [
-  { id: 1, name: "Emma Thompson", role: "Designer", bgColor: "bg-peach" },
-  { id: 2, name: "Liam Johnson", role: "Developer", bgColor: "bg-lavender" },
-  { id: 3, name: "Olivia Davis", role: "Photographer", bgColor: "bg-coral" },
-  { id: 4, name: "Noah Wilson", role: "Writer", bgColor: "bg-cream" },
-  { id: 5, name: "Ava Martinez", role: "Artist", bgColor: "bg-mint" },
-  { id: 6, name: "William Brown", role: "Musician", bgColor: "bg-peach" },
-  { id: 7, name: "Sophia Taylor", role: "Animator", bgColor: "bg-lavender" },
-  { id: 8, name: "James Anderson", role: "Filmmaker", bgColor: "bg-coral" },
-  { id: 9, name: "Isabella Thomas", role: "Illustrator", bgColor: "bg-cream" },
-  { id: 10, name: "Benjamin Lee", role: "Sculptor", bgColor: "bg-mint" },
-  { id: 11, name: "Mia White", role: "Dancer", bgColor: "bg-peach" },
-  { id: 12, name: "Lucas Harris", role: "Chef", bgColor: "bg-lavender" },
+  { id: 1, name: "Emma Thompson", role: "Designer", image: "https://picsum.photos/seed/member1/400/500" },
+  { id: 2, name: "Liam Johnson", role: "Developer", image: "https://picsum.photos/seed/member2/400/500" },
+  { id: 3, name: "Olivia Davis", role: "Photographer", image: "https://picsum.photos/seed/member3/400/500" },
+  { id: 4, name: "Noah Wilson", role: "Writer", image: "https://picsum.photos/seed/member4/400/500" },
+  { id: 5, name: "Ava Martinez", role: "Artist", image: "https://picsum.photos/seed/member5/400/500" },
+  { id: 6, name: "William Brown", role: "Musician", image: "https://picsum.photos/seed/member6/400/500" },
+  { id: 7, name: "Sophia Taylor", role: "Animator", image: "https://picsum.photos/seed/member7/400/500" },
+  { id: 8, name: "James Anderson", role: "Filmmaker", image: "https://picsum.photos/seed/member8/400/500" },
+  { id: 9, name: "Isabella Thomas", role: "Illustrator", image: "https://picsum.photos/seed/member9/400/500" },
+  { id: 10, name: "Benjamin Lee", role: "Sculptor", image: "https://picsum.photos/seed/member10/400/500" },
+  { id: 11, name: "Mia White", role: "Dancer", image: "https://picsum.photos/seed/member11/400/500" },
+  { id: 12, name: "Lucas Harris", role: "Chef", image: "https://picsum.photos/seed/member12/400/500" },
 ]
 
 export function CommunitySection() {
@@ -36,8 +33,8 @@ export function CommunitySection() {
           </p>
         </div>
 
-        {/* Large Grid - 3 or 4 columns */}
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        {/* Grid - no gap, no rounded corners */}
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {communityMembers.map((member) => (
             <MemberCard key={member.id} member={member} />
           ))}
@@ -53,36 +50,26 @@ interface MemberCardProps {
 
 function MemberCard({ member }: MemberCardProps) {
   return (
-    <motion.div
-      whileHover={{ scale: 1.05 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className={`group relative cursor-pointer overflow-hidden ${member.bgColor}`}
-      style={{ borderRadius: "32px" }}
-    >
-      {/* Soft inner glow */}
-      <div
-        className="pointer-events-none absolute inset-0 z-10 transition-shadow duration-300 group-hover:shadow-[inset_0_0_50px_rgba(255,255,255,0.4),0_20px_50px_rgba(0,0,0,0.15)]"
-        style={{
-          boxShadow: "inset 0 0 40px rgba(255,255,255,0.25)",
-          borderRadius: "32px",
-        }}
+    <div className="group relative cursor-pointer overflow-hidden">
+      {/* Background image - scales on hover */}
+      <img
+        src={member.image}
+        alt={member.name}
+        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
       />
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black/40 transition-colors duration-300 group-hover:bg-black/50" />
 
       {/* Card Content */}
-      <div className="flex aspect-[4/5] flex-col items-center justify-center p-6">
-        {/* Avatar */}
-        <div className="mb-5 flex h-24 w-24 items-center justify-center rounded-3xl bg-white/50 shadow-md transition-transform duration-300 group-hover:scale-105">
-          <User className="h-12 w-12 text-foreground/60" />
-        </div>
-
+      <div className="relative z-10 flex aspect-[4/5] flex-col items-center justify-end p-6 pb-8">
         {/* Name */}
-        <h3 className="text-center text-xl font-bold text-foreground">{member.name}</h3>
+        <h3 className="text-center text-xl font-bold text-white drop-shadow-md">{member.name}</h3>
 
         {/* Role Badge */}
-        <span className="mt-3 inline-block rounded-full bg-white/50 px-4 py-1.5 text-sm font-medium text-foreground/80">
+        <span className="mt-3 inline-block rounded-full bg-white/20 px-4 py-1.5 text-sm font-medium text-white/80 backdrop-blur-sm">
           {member.role}
         </span>
       </div>
-    </motion.div>
+    </div>
   )
 }
