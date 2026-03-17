@@ -6,7 +6,11 @@ import { format, isToday, isThisMonth, isThisYear, isWithinInterval } from "date
 import type { DateRange } from "react-day-picker"
 import Image from "next/image"
 
+import gsap from "gsap"
+import { ScrollTrigger } from "gsap/ScrollTrigger"
 import { cn } from "@/lib/utils"
+
+gsap.registerPlugin(ScrollTrigger)
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -246,6 +250,31 @@ function GalleryCard({
   const [isLoaded, setIsLoaded] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  // ScrollTrigger fade-in animation
+  useEffect(() => {
+    if (!cardRef.current) return
+
+    gsap.set(cardRef.current, { opacity: 0, y: 40 })
+
+    const tween = gsap.to(cardRef.current, {
+      opacity: 1,
+      y: 0,
+      duration: 0.8,
+      ease: "power2.out",
+      scrollTrigger: {
+        trigger: cardRef.current,
+        start: "top 90%",
+        toggleActions: "play none none none",
+      },
+    })
+
+    return () => {
+      tween.scrollTrigger?.kill()
+      tween.kill()
+    }
+  }, [])
 
   const themeColors = ["var(--mint)", "var(--lavender)", "var(--peach)", "var(--cream)", "var(--coral)"]
 
@@ -283,7 +312,8 @@ function GalleryCard({
 
   return (
     <div
-      className="group relative mb-6 break-inside-avoid p-4 transition-all duration-300 ease-out hover:z-40"
+      ref={cardRef}
+      className="group relative mb-6 break-inside-avoid p-4 transition-[box-shadow,transform] duration-300 ease-out hover:z-40"
       style={{ transform: `rotate(${rotation}deg)` }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
