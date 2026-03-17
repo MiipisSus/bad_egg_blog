@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
-import { Calendar as CalendarIcon } from "lucide-react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from "lucide-react"
 import { format, isToday, isThisMonth, isThisYear, isWithinInterval } from "date-fns"
 import type { DateRange } from "react-day-picker"
 import Image from "next/image"
@@ -26,6 +26,8 @@ export function Gallery() {
   const [activeFilter, setActiveFilter] = useState<FilterType>("all")
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(true)
+  const [modalPhoto, setModalPhoto] = useState<GalleryPhoto | null>(null)
+  const [modalIndex, setModalIndex] = useState(0)
 
   useEffect(() => {
     fetch("/api/gallery")
@@ -75,47 +77,64 @@ export function Gallery() {
     })
   }, [photos, activeFilter, dateRange])
 
+  const openModal = useCallback((photo: GalleryPhoto, index: number) => {
+    setModalPhoto(photo)
+    setModalIndex(index)
+  }, [])
+
+  const closeModal = useCallback(() => {
+    setModalPhoto(null)
+    setModalIndex(0)
+  }, [])
+
   return (
-    <section className="min-h-screen bg-accent pb-20 pt-32" style={{ backgroundImage: "url('/assets/images/white-brick-wall.png')", backgroundRepeat: "repeat", backgroundSize: "50px" }}>
-      <div className="container mx-auto px-4 md:px-6">
-        {/* Page Header */}
-        <div className="mb-12 text-center">
-          <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
-            畫廊（素材替代）
-          </h1>
+    <>
+      <section className="min-h-screen bg-accent pb-20 pt-32" style={{ backgroundImage: "url('/assets/images/white-brick-wall.png')", backgroundRepeat: "repeat", backgroundSize: "50px" }}>
+        <div className="container mx-auto px-4 md:px-6">
+          {/* Page Header */}
+          <div className="mb-12 text-center">
+            <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
+              畫廊（素材替代）
+            </h1>
+          </div>
+
+          {/* Filter Bar */}
+          <FilterBar
+            activeFilter={activeFilter}
+            dateRange={dateRange}
+            onFilterClick={handleFilterClick}
+            onDateRangeSelect={handleDateRangeSelect}
+          />
+
+          {/* Masonry Grid */}
+          {isLoading ? (
+            <MasonrySkeleton />
+          ) : filteredPhotos.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-32 text-muted-foreground">
+              <p className="text-lg">此區間沒有照片</p>
+              <Button
+                variant="ghost"
+                className="mt-4"
+                onClick={() => handleFilterClick("all")}
+              >
+                查看全部
+              </Button>
+            </div>
+          ) : (
+            <MasonryGrid photos={filteredPhotos} onOpen={openModal} />
+          )}
         </div>
+      </section>
 
-        {/* Filter Bar */}
-        <FilterBar
-          activeFilter={activeFilter}
-          dateRange={dateRange}
-          onFilterClick={handleFilterClick}
-          onDateRangeSelect={handleDateRangeSelect}
+      {/* Modal */}
+      {modalPhoto && (
+        <GalleryModal
+          photo={modalPhoto}
+          initialIndex={modalIndex}
+          onClose={closeModal}
         />
-
-        {/* Masonry Grid */}
-        {isLoading ? (
-          <MasonrySkeleton />
-        ) : filteredPhotos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-32 text-muted-foreground">
-            <p className="text-lg">此區間沒有照片</p>
-            <Button
-              variant="ghost"
-              className="mt-4"
-              onClick={() => handleFilterClick("all")}
-            >
-              查看全部
-            </Button>
-          </div>
-        ) : (
-          <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
-            {filteredPhotos.map((photo) => (
-              <GalleryCard key={photo.id} photo={photo} />
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
+      )}
+    </>
   )
 }
 
@@ -187,8 +206,47 @@ function FilterBar({
   )
 }
 
-function GalleryCard({ photo }: { photo: GalleryPhoto }) {
+const COLUMN_COUNT = 3
+
+function MasonryGrid({
+  photos,
+  onOpen,
+}: {
+  photos: GalleryPhoto[]
+  onOpen: (photo: GalleryPhoto, index: number) => void
+}) {
+  // Distribute photos row-first: [1,2,3] → col0,col1,col2, [4,5,6] → col0,col1,col2...
+  const columns = useMemo(() => {
+    const cols: GalleryPhoto[][] = Array.from({ length: COLUMN_COUNT }, () => [])
+    photos.forEach((photo, i) => {
+      cols[i % COLUMN_COUNT].push(photo)
+    })
+    return cols
+  }, [photos])
+
+  return (
+    <div className="flex gap-x-8">
+      {columns.map((col, colIndex) => (
+        <div key={colIndex} className="flex flex-1 flex-col">
+          {col.map((photo) => (
+            <GalleryCard key={photo.id} photo={photo} onOpen={onOpen} />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function GalleryCard({
+  photo,
+  onOpen,
+}: {
+  photo: GalleryPhoto
+  onOpen: (photo: GalleryPhoto, index: number) => void
+}) {
   const [isLoaded, setIsLoaded] = useState(false)
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const themeColors = ["var(--mint)", "var(--lavender)", "var(--peach)", "var(--cream)", "var(--coral)"]
 
@@ -201,30 +259,77 @@ function GalleryCard({ photo }: { photo: GalleryPhoto }) {
     }
   }, [photo.id])
 
+  const handleMouseEnter = useCallback(() => {
+    if (photo.images.length <= 1) return
+    timerRef.current = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % photo.images.length)
+    }, 1500)
+  }, [photo.images.length])
+
+  const handleMouseLeave = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    setCurrentIndex(0)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [])
+
+  const isStack = photo.images.length > 1
+
   return (
     <div
       className="group relative mb-6 break-inside-avoid p-4 transition-all duration-300 ease-out hover:z-50"
       style={{ transform: `rotate(${rotation}deg)` }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
+      {/* Stacked polaroid layers behind main frame */}
+      {isStack && (
+        <>
+          <div
+            className="absolute inset-4 -z-20 bg-white shadow-md transition-all duration-300 ease-out group-hover:scale-105 group-hover:shadow-lg"
+            style={{ transform: "rotate(-6deg) translate(-8px, 8px)" }}
+          />
+          <div
+            className="absolute inset-4 -z-10 bg-white shadow-md transition-all duration-300 ease-out group-hover:scale-105 group-hover:shadow-lg"
+            style={{ transform: "rotate(4deg) translate(4px, -4px)" }}
+          />
+        </>
+      )}
+
       {/* Polaroid frame */}
-      <div className="relative bg-white p-4 pb-16 shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 ease-out group-hover:scale-105 group-hover:shadow-[0_16px_50px_rgb(0,0,0,0.2)]">
+      <div
+        className="relative cursor-pointer bg-white p-4 pb-16 shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 ease-out group-hover:scale-105 group-hover:shadow-[0_16px_50px_rgb(0,0,0,0.2)]"
+        onClick={() => onOpen(photo, currentIndex)}
+      >
         {/* Image container - natural aspect ratio */}
         <div
           className="relative w-full overflow-hidden border border-slate-100"
           style={{ aspectRatio: `${photo.width}/${photo.height}` }}
         >
-          <Image
-            src={photo.src}
-            alt={photo.alt}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-            className={cn(
-              "object-cover transition-all duration-500 ease-out",
-              "group-hover:scale-105",
-              isLoaded ? "opacity-100" : "opacity-0"
-            )}
-            onLoad={() => setIsLoaded(true)}
-          />
+          {/* All images stacked, only currentIndex visible */}
+          {photo.images.map((src, i) => (
+            <Image
+              key={src}
+              src={src}
+              alt={`${photo.albumTitle} ${i + 1}`}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+              className={cn(
+                "absolute inset-0 object-cover transition-opacity duration-500 ease-out",
+                i === currentIndex ? "opacity-100" : "opacity-0",
+                i === 0 && isLoaded ? "" : i === 0 ? "opacity-0" : ""
+              )}
+              onLoad={i === 0 ? () => setIsLoaded(true) : undefined}
+              priority={i === 0}
+            />
+          ))}
 
           {/* Paper grain texture overlay */}
           <div
@@ -236,6 +341,23 @@ function GalleryCard({ photo }: { photo: GalleryPhoto }) {
 
           {/* Hover overlay */}
           <div className="absolute inset-0 bg-linear-to-t from-black/30 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+
+          {/* Image counter dots */}
+          {photo.images.length > 1 && (
+            <div className="absolute bottom-2 left-2 flex gap-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+              {photo.images.map((_, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    "block h-1.5 rounded-full transition-all",
+                    i === currentIndex
+                      ? "w-3 bg-white"
+                      : "w-1.5 bg-white/50"
+                  )}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Title - overlapping left bottom, tilted */}
@@ -267,24 +389,165 @@ function GalleryCard({ photo }: { photo: GalleryPhoto }) {
   )
 }
 
-function MasonrySkeleton() {
-  const rotations = [-1.5, 0.8, -0.5, 1.2, -1, 0.3, 1.8, -0.8, 0.5, -1.2, 1.5, -0.3]
-  const heights = [300, 220, 280, 350, 240, 300, 260, 320, 280, 340, 220, 300]
+// ─── Fullscreen Modal ────────────────────────────────────────────────
+
+function GalleryModal({
+  photo,
+  initialIndex,
+  onClose,
+}: {
+  photo: GalleryPhoto
+  initialIndex: number
+  onClose: () => void
+}) {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex)
+
+  const goNext = useCallback(() => {
+    setCurrentIndex((prev) => (prev + 1) % photo.images.length)
+  }, [photo.images.length])
+
+  const goPrev = useCallback(() => {
+    setCurrentIndex((prev) => (prev - 1 + photo.images.length) % photo.images.length)
+  }, [photo.images.length])
+
+  // Keyboard navigation
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose()
+      if (e.key === "ArrowRight") goNext()
+      if (e.key === "ArrowLeft") goPrev()
+    }
+    window.addEventListener("keydown", handleKey)
+    return () => window.removeEventListener("keydown", handleKey)
+  }, [onClose, goNext, goPrev])
+
+  // Lock body scroll
+  useEffect(() => {
+    document.body.style.overflow = "hidden"
+    return () => { document.body.style.overflow = "" }
+  }, [])
+
   return (
-    <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
-      {rotations.map((rot, i) => (
-        <div
-          key={i}
-          className="mb-6 break-inside-avoid p-4"
-          style={{ transform: `rotate(${rot}deg)` }}
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative flex max-h-[90vh] w-full max-w-5xl flex-col items-center px-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute -top-2 right-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
         >
-          <div className="animate-pulse bg-white p-3 pb-12 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
-            <div className="bg-slate-100" style={{ height: `${heights[i]}px` }} />
-            <div className="mt-2 flex flex-col items-center gap-1.5">
-              <div className="h-4 w-20 rounded bg-slate-100" />
-              <div className="h-3 w-24 rounded bg-slate-50" />
-            </div>
+          <X className="h-5 w-5" />
+        </button>
+
+        {/* Main image - auto-fit to content */}
+        <div className="relative">
+          <Image
+            src={photo.images[currentIndex]}
+            alt={`${photo.albumTitle} ${currentIndex + 1}`}
+            width={photo.width}
+            height={photo.height}
+            sizes="(max-width: 1280px) 90vw, 1024px"
+            className="max-h-[75vh] w-auto rounded-lg object-contain transition-opacity duration-300"
+          />
+
+          {/* Album info - right bottom inset, frosted glass */}
+          <div className="absolute bottom-3 right-3 max-w-[60%] rounded-lg bg-black/40 px-4 py-2.5 backdrop-blur-md">
+            <p
+              className="text-lg text-white"
+              style={{ fontFamily: "'Mantou Sans', sans-serif" }}
+            >
+              {photo.albumTitle}
+            </p>
+            <p className="mt-0.5 text-xs text-white/70">
+              {photo.description}
+            </p>
           </div>
+        </div>
+
+        {/* Bottom navigation bar */}
+        <div className="mt-4 flex items-center gap-6">
+          {/* Prev button */}
+          <button
+            onClick={goPrev}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+
+          {/* Pagination dots */}
+          <div className="flex items-center gap-2">
+            {photo.images.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentIndex(i)}
+                className={cn(
+                  "rounded-full transition-all",
+                  i === currentIndex
+                    ? "h-3 w-3 bg-white"
+                    : "h-2 w-2 bg-white/40 hover:bg-white/60"
+                )}
+              />
+            ))}
+          </div>
+
+          {/* Next button */}
+          <button
+            onClick={goNext}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Counter only */}
+        <p className="mt-3 text-xs text-white/40">
+          {currentIndex + 1} / {photo.images.length}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Skeleton ────────────────────────────────────────────────────────
+
+function MasonrySkeleton() {
+  const items = [
+    { rot: -1.5, h: 300 }, { rot: 0.8, h: 220 }, { rot: -0.5, h: 280 },
+    { rot: 1.2, h: 350 }, { rot: -1, h: 240 }, { rot: 0.3, h: 300 },
+    { rot: 1.8, h: 260 }, { rot: -0.8, h: 320 }, { rot: 0.5, h: 280 },
+    { rot: -1.2, h: 340 }, { rot: 1.5, h: 220 }, { rot: -0.3, h: 300 },
+  ]
+
+  // Same row-first distribution as MasonryGrid
+  const columns: (typeof items)[] = Array.from({ length: COLUMN_COUNT }, () => [])
+  items.forEach((item, i) => {
+    columns[i % COLUMN_COUNT].push(item)
+  })
+
+  return (
+    <div className="flex gap-x-8">
+      {columns.map((col, colIndex) => (
+        <div key={colIndex} className="flex flex-1 flex-col">
+          {col.map((item, i) => (
+            <div
+              key={i}
+              className="mb-6 p-4"
+              style={{ transform: `rotate(${item.rot}deg)` }}
+            >
+              <div className="animate-pulse bg-white p-4 pb-16 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+                <div className="bg-slate-100" style={{ height: `${item.h}px` }} />
+                <div className="mt-3 flex items-end justify-between">
+                  <div className="h-5 w-20 rounded bg-slate-100" />
+                  <div className="h-3 w-24 rounded bg-slate-50" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ))}
     </div>

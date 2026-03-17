@@ -63,8 +63,9 @@ export const mockAllMembers: Member[] = [...mockLeaders, ...mockCommunityMembers
 // Gallery mock data
 export interface GalleryPhoto {
   id: number
-  src: string
-  alt: string
+  images: string[]       // multiple images per album
+  albumTitle: string
+  description: string
   width: number
   height: number
   date: string // ISO date string
@@ -72,6 +73,21 @@ export interface GalleryPhoto {
 }
 
 const categories = ["活動！", "聚會！", "下午茶！", "幕後花絮！"]
+
+const albumTitles = [
+  "春季社遊", "工作坊紀錄", "年末聚餐", "社團日常",
+  "迎新活動", "創意發表", "下午茶時光", "街拍散步",
+  "週末出遊", "手作體驗", "慶生派對", "讀書會",
+  "音樂之夜", "電影欣賞", "攝影練習", "志工服務",
+  "跨年派對", "野餐日", "桌遊大會", "烘焙課程",
+  "登山健行", "市集探索", "畢業季", "聖誕交換禮物",
+]
+
+const descriptions = [
+  "一起留下的美好回憶", "每一刻都值得珍藏",
+  "笑聲與歡樂的瞬間", "用鏡頭記錄我們的故事",
+  "最棒的時光總是不期而遇", "感謝每一位的參與",
+]
 
 // Generate random heights for masonry effect
 const photoSizes: [number, number][] = [
@@ -83,15 +99,24 @@ const photoSizes: [number, number][] = [
   [400, 300], [400, 550], [400, 450], [400, 600],
 ]
 
-export const mockGalleryPhotos: GalleryPhoto[] = photoSizes.map(([w, h], i) => ({
-  id: i + 1,
-  src: `https://picsum.photos/seed/gallery${i + 1}/${w}/${h}`,
-  alt: `Gallery photo ${i + 1}`,
-  width: w,
-  height: h,
-  date: generateRandomDate(i),
-  category: categories[i % categories.length],
-}))
+export const mockGalleryPhotos: GalleryPhoto[] = photoSizes.map(([w, h], i) => {
+  // Mix of single photos and albums: every 3rd card is single
+  const imageCount = i % 3 === 0 ? 1 : 3 + (i % 4)
+  const images = Array.from({ length: imageCount }, (_, j) =>
+    `https://picsum.photos/seed/gallery${i + 1}_${j}/${w}/${h}`
+  )
+
+  return {
+    id: i + 1,
+    images,
+    albumTitle: albumTitles[i % albumTitles.length],
+    description: descriptions[i % descriptions.length],
+    width: w,
+    height: h,
+    date: generateRandomDate(i),
+    category: categories[i % categories.length],
+  }
+})
 
 function generateRandomDate(seed: number): string {
   const now = new Date()
