@@ -46,7 +46,7 @@ export function Header() {
         <Link href="/" className="flex items-center">
           <motion.span
             animate={{
-              color: "var(--foreground)",
+              color: isScrolled ? "var(--foreground)" : "white",
             }}
             transition={{ duration: 0.3 }}
             className="text-2xl font-bold tracking-tight md:text-3xl"
@@ -70,10 +70,10 @@ export function Header() {
             >
               <motion.span
                 animate={{
-                  color: isScrolled ? "color-mix(in srgb, var(--foreground) 80%, transparent)" : "color-mix(in srgb, var(--foreground) 70%, transparent)",
+                  color: isScrolled ? "color-mix(in srgb, var(--foreground) 80%, transparent)" : "rgba(255,255,255,0.85)",
                 }}
                 whileHover={{
-                  color: "var(--foreground)",
+                  color: isScrolled ? "var(--foreground)" : "white",
                 }}
                 transition={{ duration: 0.2 }}
               >
@@ -86,15 +86,15 @@ export function Header() {
         {/* Mobile Menu Button */}
         <button className="flex flex-col gap-1.5 md:hidden">
           <motion.span
-            animate={{ backgroundColor: "var(--foreground)" }}
+            animate={{ backgroundColor: isScrolled ? "var(--foreground)" : "white" }}
             className="h-0.5 w-6 rounded-full"
           />
           <motion.span
-            animate={{ backgroundColor: "var(--foreground)" }}
+            animate={{ backgroundColor: isScrolled ? "var(--foreground)" : "white" }}
             className="h-0.5 w-6 rounded-full"
           />
           <motion.span
-            animate={{ backgroundColor: "var(--foreground)" }}
+            animate={{ backgroundColor: isScrolled ? "var(--foreground)" : "white" }}
             className="h-0.5 w-4 rounded-full"
           />
         </button>
