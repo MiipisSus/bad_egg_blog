@@ -94,7 +94,7 @@ export function Gallery() {
 
   return (
     <>
-      <section className="min-h-screen bg-accent pb-20 pt-32" style={{ backgroundImage: "url('/assets/images/white-brick-wall.png')", backgroundRepeat: "repeat", backgroundSize: "50px" }}>
+      <section className="min-h-screen bg-accent pb-20 pt-32">
         <div className="container mx-auto px-4 md:px-6">
 
           {/* Filter Bar */}
@@ -277,15 +277,10 @@ function GalleryCard({
     }
   }, [])
 
-  const themeColors = ["var(--mint)", "var(--lavender)", "var(--peach)", "var(--cream)", "var(--coral)"]
-
   // Stable random rotation between -2 and 2 degrees per card
-  const { rotation, titleColor } = useMemo(() => {
+  const rotation = useMemo(() => {
     const seed = photo.id * 9301 + 49297
-    return {
-      rotation: ((seed % 4001) / 1000) - 2,
-      titleColor: themeColors[seed % themeColors.length],
-    }
+    return ((seed % 4001) / 1000) - 2
   }, [photo.id])
 
   const handleMouseEnter = useCallback(() => {
@@ -335,7 +330,7 @@ function GalleryCard({
 
       {/* Polaroid frame */}
       <div
-        className="relative cursor-pointer bg-white p-4 pb-16 shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 ease-out group-hover:scale-105 group-hover:shadow-[0_16px_50px_rgb(0,0,0,0.2)]"
+        className="relative cursor-pointer bg-white p-4 pb-10 shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 ease-out group-hover:scale-105 group-hover:shadow-[0_16px_50px_rgb(0,0,0,0.2)]"
         onClick={() => onOpen(photo, currentIndex)}
       >
         {/* Image container - natural aspect ratio */}
@@ -374,30 +369,15 @@ function GalleryCard({
 
         </div>
 
-        {/* Title - overlapping left bottom, tilted */}
-        <p
-          className="absolute bottom-12 left-4 -rotate-6 text-3xl"
-          style={{
-            fontFamily: "'Mantou Sans', sans-serif",
-            color: titleColor,
-            WebkitTextStroke: "4px white",
-            paintOrder: "stroke fill",
-          }}
-        >
-          {photo.category}
-        </p>
-
-        {/* Date - right bottom, aligned with frame */}
-        <p
-          className="absolute bottom-3 right-3 text-sm text-stone-300"
-          style={{
-            fontFamily: "'Mantou Sans', sans-serif",
-            WebkitTextStroke: "4px white",
-            paintOrder: "stroke fill",
-          }}
-        >
-          {format(new Date(photo.date), "yyyy / MM / dd")}
-        </p>
+        {/* Title & Date - centered in bottom white area */}
+        <div className="mt-3 text-center">
+          <p className="text-sm font-semibold text-slate-800">
+            {photo.category}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            {format(new Date(photo.date), "yyyy / MM / dd")}
+          </p>
+        </div>
       </div>
     </div>
   )
@@ -614,7 +594,7 @@ function MasonrySkeleton() {
               className="mb-6 p-4"
               style={{ transform: `rotate(${item.rot}deg)` }}
             >
-              <div className="animate-pulse bg-white p-4 pb-16 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+              <div className="animate-pulse bg-white p-4 pb-10 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
                 <div className="bg-slate-100" style={{ height: `${item.h}px` }} />
                 <div className="mt-3 flex items-end justify-between">
                   <div className="h-5 w-20 rounded bg-slate-100" />

@@ -84,7 +84,7 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-sans, 'Plus Jakarta Sans', system-ui, sans-serif);
+  --font-sans: 'Jiyucho', var(--font-jakarta), 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';
   
   /* Theme Colors */
