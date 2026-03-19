@@ -1,16 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
+import { CreditCard, X } from "lucide-react"
 
 const leaders = [
   {
     id: 1,
     name: "Alexandra Chen",
-
-
     bgColor: "bg-mint",
     image: "https://picsum.photos/seed/leader1/800/1200",
+    nameCard: "https://picsum.photos/seed/card1/600/350",
     bio: "Alexandra has been leading our community for 3 years with passion and dedication. She specializes in community building, strategic planning, and fostering meaningful connections among members.",
     rank: "Executive Leader",
     social: { twitter: "#", instagram: "#", linkedin: "#" },
@@ -18,8 +18,6 @@ const leaders = [
   {
     id: 2,
     name: "Marcus Rivera",
-
-
     bgColor: "bg-lavender",
     image: "https://picsum.photos/seed/leader2/800/1200",
     bio: "Marcus brings 5 years of experience in team coordination. He ensures smooth operations and supports all club initiatives with unwavering commitment.",
@@ -29,10 +27,9 @@ const leaders = [
   {
     id: 3,
     name: "Sophie Williams",
-
-
     bgColor: "bg-coral",
     image: "https://picsum.photos/seed/leader3/800/1200",
+    nameCard: "https://picsum.photos/seed/card3/600/350",
     bio: "Sophie is the creative force behind all our memorable events. Her attention to detail and innovative ideas make every gathering special.",
     rank: "Director",
     social: { twitter: "#", instagram: "#", linkedin: "#" },
@@ -40,8 +37,6 @@ const leaders = [
   {
     id: 4,
     name: "James Park",
-
-
     bgColor: "bg-peach",
     image: "https://picsum.photos/seed/leader4/800/1200",
     bio: "James focuses on member engagement and building meaningful connections within our community. He ensures every member feels valued.",
@@ -51,10 +46,9 @@ const leaders = [
   {
     id: 5,
     name: "Emily Nakamura",
-
-
     bgColor: "bg-cream",
     image: "https://picsum.photos/seed/leader5/800/1200",
+    nameCard: "https://picsum.photos/seed/card5/600/350",
     bio: "Emily leads the visual identity of our community. Her creative vision transforms every project into something beautiful and memorable.",
     rank: "Director",
     social: { twitter: "#", instagram: "#", linkedin: "#" },
@@ -63,6 +57,7 @@ const leaders = [
 
 export function LeadershipSection() {
   const [hoveredId, setHoveredId] = useState<number | null>(null)
+  const [nameCardUrl, setNameCardUrl] = useState<string | null>(null)
 
   return (
     <section className="flex min-h-[95vh] flex-col bg-cream/50 pt-20">
@@ -97,7 +92,7 @@ export function LeadershipSection() {
                   damping: 25,
                 }}
                 className={`relative cursor-pointer overflow-hidden ${leader.bgColor}`}
-                
+                onClick={() => leader.nameCard && setNameCardUrl(leader.nameCard)}
               >
                 {/* Full-cover background image with dark overlay */}
                 <img
@@ -141,7 +136,11 @@ export function LeadershipSection() {
                   </div>
 
                   {/* Right: Details - transparent bg, white text */}
-                  <div className="flex w-1/2 flex-col justify-center p-8">
+                  <div className="relative flex w-1/2 flex-col justify-center p-8">
+                    {/* Name card icon */}
+                    {leader.nameCard && (
+                      <CreditCard className="absolute top-4 right-4 h-6 w-6 text-white drop-shadow-md" />
+                    )}
                     {/* Rank Badge */}
                     <div className="mb-4">
                       <span className="rounded-full bg-white/20 px-4 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
@@ -166,6 +165,35 @@ export function LeadershipSection() {
           })}
         </div>
 
+      {/* Name Card Modal */}
+      <AnimatePresence>
+        {nameCardUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setNameCardUrl(null)}
+          >
+            <button
+              onClick={() => setNameCardUrl(null)}
+              className="absolute top-6 right-6 cursor-pointer text-white transition-transform hover:scale-110"
+            >
+              <X className="h-8 w-8" />
+            </button>
+            <motion.img
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              src={nameCardUrl}
+              alt="Name Card"
+              className="max-h-[70vh] max-w-[90vw] object-contain shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   )
 }
