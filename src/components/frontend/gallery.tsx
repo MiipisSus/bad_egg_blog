@@ -94,7 +94,7 @@ export function Gallery() {
 
   return (
     <>
-      <section className="min-h-screen bg-accent pb-20 pt-32">
+      <section className="min-h-screen bg-background pb-20 pt-32">
         <div className="container mx-auto px-4 md:px-6">
 
           {/* Filter Bar */}
