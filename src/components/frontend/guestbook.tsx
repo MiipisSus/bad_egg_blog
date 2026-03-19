@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Plus, Eraser, Check, X, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, Eraser, Check, X, ChevronLeft, ChevronRight, Undo2, Redo2, Pipette } from "lucide-react"
 // @ts-expect-error -- react-canvas-draw has no type definitions
 import CanvasDraw from "react-canvas-draw"
 
@@ -112,15 +112,54 @@ export function Guestbook() {
         </p>
       </div>
 
+      {/* Toolbar above blackboard */}
+      <div className="container mx-auto relative flex items-center justify-center px-6 pb-4 md:px-12">
+        {/* Pagination dots - centered */}
+        {totalPages > 1 && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setCurrentPage((p) => (p - 1 + totalPages) % totalPages)}
+              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-foreground/50 transition-colors hover:text-foreground"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i)}
+                className={`h-2.5 w-2.5 cursor-pointer rounded-full transition-all ${
+                  i === currentPage ? "scale-125 bg-foreground" : "bg-foreground/30"
+                }`}
+              />
+            ))}
+            <button
+              onClick={() => setCurrentPage((p) => (p + 1) % totalPages)}
+              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-foreground/50 transition-colors hover:text-foreground"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Add button - right side */}
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="absolute right-6 flex cursor-pointer items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/80 md:right-12"
+        >
+          <Plus className="h-4 w-4" />
+          新增簽到
+        </button>
+      </div>
+
       {/* Blackboard */}
-      <div className="container mx-auto px-4 md:px-6">
+      <div>
         <div
           ref={boardRef}
-          className="relative h-[80vh] w-full overflow-hidden rounded-xl"
+          className="relative h-[90vh] w-full overflow-hidden"
           style={{
             backgroundColor: "#122018",
             backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E")`,
-            boxShadow: "inset 0 0 80px rgba(0,0,0,0.5), 0 8px 32px rgba(0,0,0,0.3)",
+            boxShadow: "inset 0 0 80px rgba(0,0,0,0.5)",
           }}
         >
           {/* Chalk dust lines */}
@@ -130,20 +169,6 @@ export function Guestbook() {
               backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255,255,255,0.1) 40px, rgba(255,255,255,0.1) 41px)",
             }}
           />
-
-          {/* Add button */}
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="absolute top-6 right-6 z-30 flex cursor-pointer items-center gap-2 rounded-full bg-white/10 px-5 py-2.5 text-sm font-medium text-white/80 backdrop-blur-sm transition-colors hover:bg-white/20"
-          >
-            <Plus className="h-4 w-4" />
-            新增簽到
-          </button>
-
-          {/* Page indicator */}
-          <div className="absolute top-6 left-6 z-30 text-sm text-white/40">
-            {currentPage + 1} / {totalPages}
-          </div>
 
           {/* Sticky Notes for current page */}
           <AnimatePresence mode="wait">
@@ -170,36 +195,6 @@ export function Guestbook() {
             </motion.div>
           </AnimatePresence>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-4">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
-                disabled={currentPage === 0}
-                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white/70 transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-30"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-
-              {Array.from({ length: totalPages }, (_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setCurrentPage(i)}
-                  className={`h-2.5 w-2.5 cursor-pointer rounded-full transition-all ${
-                    i === currentPage ? "scale-125 bg-white/80" : "bg-white/30"
-                  }`}
-                />
-              ))}
-
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={currentPage === totalPages - 1}
-                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white/70 transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-30"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -265,8 +260,8 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
     let newY = e.clientY - boardRect.top - offset.current.y
 
     // Clamp within board
-    newX = Math.max(0, Math.min(newX, boardRect.width - 144))
-    newY = Math.max(0, Math.min(newY, boardRect.height - 144))
+    newX = Math.max(0, Math.min(newX, boardRect.width - 176))
+    newY = Math.max(0, Math.min(newY, boardRect.height - 176))
 
     pos.current = { x: newX, y: newY }
     elRef.current.style.left = `${newX}px`
@@ -303,7 +298,7 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
       }}
     >
       <div
-        className={`pointer-events-none relative h-36 w-36 ${note.color} p-3 shadow-2xl transition-shadow duration-200 ${
+        className={`pointer-events-none relative h-44 w-44 ${note.color} p-3 shadow-2xl transition-shadow duration-200 ${
           isDragging ? "shadow-[0_20px_60px_rgba(0,0,0,0.4)]" : ""
         }`}
       >
@@ -333,6 +328,9 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
   )
 }
 
+// ─── Default brush colors ────────────────────────────────────────────
+const BRUSH_COLORS = ["#333333", "#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#ffffff"]
+
 // ─── Drawing Modal ──────────────────────────────────────────────────
 interface DrawingModalProps {
   canvasRef: React.MutableRefObject<CanvasDraw | null>
@@ -355,85 +353,177 @@ function DrawingModal({
   onSave,
   onClose,
 }: DrawingModalProps) {
+  const [brushColor, setBrushColor] = useState(BRUSH_COLORS[0])
+  const [customColor, setCustomColor] = useState("#ff6600")
+  const [activeTool, setActiveTool] = useState<"pen" | "eraser">("pen")
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center"
       onClick={onClose}
     >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40" />
+
+      {/* Content: Canvas + Toolbar side by side */}
       <motion.div
-        initial={{ scale: 0.85, opacity: 0, y: 30 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.85, opacity: 0, y: 30 }}
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className="relative w-[90vw] max-w-lg rounded-xl bg-white p-6 shadow-2xl"
+        className="relative z-10 flex items-start gap-4"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 cursor-pointer text-slate-400 transition-colors hover:text-slate-700"
-        >
-          <X className="h-5 w-5" />
-        </button>
+        {/* Canvas area */}
+        <div className="flex flex-col gap-3">
+          {/* Sticky note color picker */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-white/60">便利貼顏色：</span>
+            {STICKY_RAW_COLORS.map((color, i) => (
+              <button
+                key={color}
+                onClick={() => onColorChange(i)}
+                className={`h-7 w-7 cursor-pointer rounded border-2 shadow-md transition-transform ${
+                  selectedColor === i ? "scale-110 border-white" : "border-transparent hover:scale-105"
+                }`}
+                style={{ backgroundColor: color }}
+              />
+            ))}
+          </div>
 
-        <h3 className="mb-4 text-xl font-bold text-slate-800">留下你的塗鴉</h3>
-
-        {/* Author name input */}
-        <input
-          type="text"
-          placeholder="你的名字（選填）"
-          value={authorName}
-          onChange={(e) => onAuthorChange(e.target.value)}
-          className="mb-4 w-full rounded-lg border border-slate-200 px-4 py-2 text-sm outline-none focus:border-mint"
-        />
-
-        {/* Sticky note color picker */}
-        <div className="mb-4 flex items-center gap-2">
-          <span className="text-sm text-slate-500">便利貼顏色：</span>
-          {STICKY_RAW_COLORS.map((color, i) => (
-            <button
-              key={color}
-              onClick={() => onColorChange(i)}
-              className={`h-7 w-7 cursor-pointer rounded-full border-2 transition-transform ${
-                selectedColor === i ? "scale-110 border-slate-800" : "border-transparent"
-              }`}
-              style={{ backgroundColor: color }}
-            />
-          ))}
-        </div>
-
-        {/* Canvas */}
-        <div className="overflow-hidden rounded-lg border border-slate-200">
-          <CanvasDraw
-            ref={canvasRef}
-            brushRadius={2}
-            brushColor="#333"
-            lazyRadius={0}
-            canvasWidth={440}
-            canvasHeight={300}
-            backgroundColor="#ffffff"
-            hideGrid
+          {/* Author name input */}
+          <input
+            type="text"
+            placeholder="你的名字（選填）"
+            value={authorName}
+            onChange={(e) => onAuthorChange(e.target.value)}
+            className="w-full rounded-lg bg-white/90 px-4 py-2 text-sm shadow-lg outline-none backdrop-blur-sm focus:ring-2 focus:ring-white/50"
           />
+
+          {/* Canvas */}
+          <div className="overflow-hidden rounded-lg shadow-2xl">
+            <CanvasDraw
+              ref={canvasRef}
+              brushRadius={activeTool === "eraser" ? 12 : 2}
+              brushColor={activeTool === "eraser" ? "#ffffff" : brushColor}
+              lazyRadius={0}
+              canvasWidth={560}
+              canvasHeight={400}
+              backgroundColor="#ffffff"
+              hideGrid
+            />
+          </div>
         </div>
 
-        {/* Actions */}
-        <div className="mt-4 flex items-center justify-between">
+        {/* Right toolbar - two rows */}
+        <div className="flex flex-col items-center justify-between self-stretch">
+          {/* Top: Close */}
           <button
-            onClick={onClear}
-            className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-50"
+            onClick={onClose}
+            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/90 text-slate-500 shadow-lg backdrop-blur-sm transition-colors hover:bg-white hover:text-slate-800"
           >
-            <Eraser className="h-4 w-4" />
-            清除
+            <X className="h-5 w-5" />
           </button>
+
+          {/* Middle: Tools split into two columns */}
+          <div className="flex gap-3">
+            {/* Column 1: Tools */}
+            <div className="flex flex-col items-center gap-2.5">
+              {/* Pen */}
+              <button
+                onClick={() => setActiveTool("pen")}
+                className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-full shadow-lg transition-all ${
+                  activeTool === "pen" ? "bg-white text-slate-800 scale-110" : "bg-white/60 text-slate-500 hover:bg-white/80"
+                }`}
+                title="畫筆"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+                </svg>
+              </button>
+
+              {/* Eraser */}
+              <button
+                onClick={() => setActiveTool("eraser")}
+                className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-full shadow-lg transition-all ${
+                  activeTool === "eraser" ? "bg-white text-slate-800 scale-110" : "bg-white/60 text-slate-500 hover:bg-white/80"
+                }`}
+                title="橡皮擦"
+              >
+                <Eraser className="h-5 w-5" />
+              </button>
+
+              {/* Undo */}
+              <button
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/60 text-slate-500 shadow-lg transition-colors hover:bg-white/80"
+                title="回退"
+              >
+                <Undo2 className="h-4 w-4" />
+              </button>
+
+              {/* Redo */}
+              <button
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/60 text-slate-500 shadow-lg transition-colors hover:bg-white/80"
+                title="復原"
+              >
+                <Redo2 className="h-4 w-4" />
+              </button>
+
+              {/* Clear */}
+              <button
+                onClick={onClear}
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/60 text-red-400 shadow-lg transition-colors hover:bg-white/80 hover:text-red-500"
+                title="清除全部"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Column 2: Colors */}
+            <div className="flex flex-col items-center gap-2">
+              {BRUSH_COLORS.map((color) => (
+                <button
+                  key={color}
+                  onClick={() => { setBrushColor(color); setActiveTool("pen") }}
+                  className={`h-7 w-7 cursor-pointer rounded-full border-2 shadow-md transition-transform ${
+                    brushColor === color && activeTool === "pen" ? "scale-110 border-white" : "border-transparent hover:scale-105"
+                  }`}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+
+              {/* Custom color picker */}
+              <div className="relative">
+                <label
+                  className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white/60 shadow-md transition-colors hover:bg-white/80"
+                  title="自選顏色"
+                >
+                  <Pipette className="h-4 w-4 text-slate-500" />
+                  <input
+                    type="color"
+                    value={customColor}
+                    onChange={(e) => {
+                      setCustomColor(e.target.value)
+                      setBrushColor(e.target.value)
+                      setActiveTool("pen")
+                    }}
+                    className="absolute inset-0 cursor-pointer opacity-0"
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom: Save */}
           <button
             onClick={onSave}
-            className="flex cursor-pointer items-center gap-2 rounded-lg bg-[#122018] px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-[#1a3025]"
+            className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-[#122018] text-white shadow-lg transition-colors hover:bg-[#1a3025]"
+            title="完成"
           >
-            <Check className="h-4 w-4" />
-            完成
+            <Check className="h-5 w-5" />
           </button>
         </div>
       </motion.div>
