@@ -13,10 +13,12 @@ interface StickyNote {
   author: string
   color: string
   position: { x: number; y: number }
+  zIndex: number
 }
 
 // ─── Constants ──────────────────────────────────────────────────────
-const NOTES_PER_PAGE = 8
+const PAGE_SOFT_LIMIT = 10  // "追加畫布" becomes available after this
+const PAGE_HARD_LIMIT = 15  // absolute max per page
 
 const STICKY_COLORS = [
   "bg-mint/80",
@@ -27,6 +29,7 @@ const STICKY_COLORS = [
 ]
 
 const STICKY_RAW_COLORS = [
+  "#ffffff",
   "#36c9d1",
   "#a3dbcf",
   "#f4baa5",
@@ -34,60 +37,82 @@ const STICKY_RAW_COLORS = [
   "#f0917e",
 ]
 
-// ─── Mock Data ──────────────────────────────────────────────────────
-const INITIAL_NOTES: StickyNote[] = [
-  { id: 1, imageData: "", author: "Alice", color: STICKY_COLORS[0], position: { x: 40, y: 30 } },
-  { id: 2, imageData: "", author: "Bob", color: STICKY_COLORS[1], position: { x: 220, y: 50 } },
-  { id: 3, imageData: "", author: "Charlie", color: STICKY_COLORS[2], position: { x: 450, y: 20 } },
-  { id: 4, imageData: "", author: "Diana", color: STICKY_COLORS[3], position: { x: 650, y: 60 } },
-  { id: 5, imageData: "", author: "Eve", color: STICKY_COLORS[4], position: { x: 100, y: 250 } },
-  { id: 6, imageData: "", author: "Frank", color: STICKY_COLORS[0], position: { x: 350, y: 280 } },
-  { id: 7, imageData: "", author: "Grace", color: STICKY_COLORS[2], position: { x: 550, y: 240 } },
-  { id: 8, imageData: "", author: "Henry", color: STICKY_COLORS[1], position: { x: 780, y: 270 } },
-  { id: 9, imageData: "", author: "Ivy", color: STICKY_COLORS[3], position: { x: 60, y: 50 } },
-  { id: 10, imageData: "", author: "Jack", color: STICKY_COLORS[4], position: { x: 300, y: 80 } },
-]
-
 // ─── Main Component ─────────────────────────────────────────────────
 export function Guestbook() {
-  const [notes, setNotes] = useState<StickyNote[]>(INITIAL_NOTES)
+  // Pages: index 0 = newest page, last index = oldest page
+  // Display order: oldest (last) -> newest (first), so visually page 1 = pages[pages.length-1]
+  const [pages, setPages] = useState<StickyNote[][]>([[]])
   const [myNoteIds, setMyNoteIds] = useState<Set<number>>(new Set())
-  const [currentPage, setCurrentPage] = useState(0)
+  const zIndexCounter = useRef(1)
+  const [currentPage, setCurrentPage] = useState(0) // visual index: 0 = oldest
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [authorName, setAuthorName] = useState("")
   const [selectedColor, setSelectedColor] = useState(0)
   const [draggedId, setDraggedId] = useState<number | null>(null)
+  const [hint, setHint] = useState<string | null>(null)
   const canvasRef = useRef<CanvasDraw | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
 
-  const totalPages = Math.max(1, Math.ceil(notes.length / NOTES_PER_PAGE))
-  const pageNotes = notes.slice(currentPage * NOTES_PER_PAGE, (currentPage + 1) * NOTES_PER_PAGE)
+  // Visual order: reversed so oldest page is first
+  const displayPages = [...pages].reverse()
+  const totalPages = displayPages.length
+  const pageNotes = displayPages[currentPage] ?? []
+
+  // "追加畫布" available when newest page (pages[0]) has >= PAGE_SOFT_LIMIT
+  const canAddPage = pages[0].length >= PAGE_SOFT_LIMIT
+
+  const handleAddPage = useCallback(() => {
+    setPages((prev) => {
+      const updated = [[], ...prev]
+      // New page is pages[0], displayed as last visual page (index = updated.length - 1)
+      setCurrentPage(updated.length - 1)
+      return updated
+    })
+  }, [])
 
   const handleSave = useCallback(() => {
     if (!canvasRef.current) return
 
-    const imageData = canvasRef.current.getDataURL("png", false, "#ffffff00") as string
+    // Map visual currentPage back to pages index
+    const pagesIndex = pages.length - 1 - currentPage
 
+    if (pages[pagesIndex].length >= PAGE_HARD_LIMIT) {
+      setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！")
+      setTimeout(() => setHint(null), 3000)
+      return
+    }
+
+    const imageData = canvasRef.current.getDataURL("png", false, STICKY_RAW_COLORS[selectedColor]) as string
+
+    zIndexCounter.current += 1
     const newNote: StickyNote = {
       id: Date.now(),
       imageData,
-      author: authorName.trim() || "Anonymous",
+      author: authorName.trim(),
       color: STICKY_COLORS[selectedColor],
       position: { x: 80, y: 60 },
+      zIndex: zIndexCounter.current,
     }
 
     // API: POST /api/guestbook
     setMyNoteIds((prev) => new Set(prev).add(newNote.id))
-    setNotes((prev) => [newNote, ...prev])
-    setCurrentPage(0)
+    setPages((prev) => {
+      const updated = [...prev]
+      updated[pagesIndex] = [...updated[pagesIndex], newNote]
+      return updated
+    })
     setIsModalOpen(false)
     setAuthorName("")
     setSelectedColor(0)
-  }, [authorName, selectedColor])
+  }, [authorName, selectedColor, currentPage, pages])
 
   const handleDragEnd = useCallback((noteId: number, newX: number, newY: number) => {
-    setNotes((prev) =>
-      prev.map((n) => (n.id === noteId ? { ...n, position: { x: newX, y: newY } } : n))
+    zIndexCounter.current += 1
+    const newZ = zIndexCounter.current
+    setPages((prev) =>
+      prev.map((page) =>
+        page.map((n) => (n.id === noteId ? { ...n, position: { x: newX, y: newY }, zIndex: newZ } : n))
+      )
     )
     setDraggedId(null)
     // API: PATCH /api/guestbook/:id { position: { x: newX, y: newY } }
@@ -113,7 +138,7 @@ export function Guestbook() {
       </div>
 
       {/* Toolbar above blackboard */}
-      <div className="container mx-auto relative flex items-center justify-center px-6 pb-4 md:px-12">
+      <div className="container mx-auto relative z-10 flex h-12 items-center justify-center px-6 pb-4 md:px-12">
         {/* Pagination dots - centered */}
         {totalPages > 1 && (
           <div className="flex items-center gap-3">
@@ -141,15 +166,51 @@ export function Guestbook() {
           </div>
         )}
 
-        {/* Add button - right side */}
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="absolute right-6 flex cursor-pointer items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/80 md:right-12"
-        >
-          <Plus className="h-4 w-4" />
-          新增簽到
-        </button>
+        {/* Right side buttons */}
+        <div className="absolute right-6 flex items-center gap-3 md:right-12">
+          {/* Add page button */}
+          <button
+            onClick={handleAddPage}
+            disabled={!canAddPage}
+            className="flex cursor-pointer items-center gap-2 rounded-full border border-foreground/20 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            追加畫布！
+          </button>
+
+          {/* Add note button */}
+          <button
+            onClick={() => {
+              const pagesIndex = pages.length - 1 - currentPage
+              if (pages[pagesIndex].length >= PAGE_HARD_LIMIT) {
+                setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！")
+                setTimeout(() => setHint(null), 3000)
+                return
+              }
+              setIsModalOpen(true)
+            }}
+            className="flex cursor-pointer items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/80"
+          >
+            <Plus className="h-4 w-4" />
+            新增簽到
+          </button>
+        </div>
       </div>
+
+      {/* Hint toast */}
+      <AnimatePresence>
+        {hint && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="container mx-auto px-6 pb-2 md:px-12"
+          >
+            <div className="mx-auto w-fit rounded-lg bg-red-500/90 px-4 py-2 text-sm font-medium text-white shadow-lg">
+              {hint}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Blackboard */}
       <div>
@@ -260,8 +321,8 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
     let newY = e.clientY - boardRect.top - offset.current.y
 
     // Clamp within board
-    newX = Math.max(0, Math.min(newX, boardRect.width - 176))
-    newY = Math.max(0, Math.min(newY, boardRect.height - 176))
+    newX = Math.max(0, Math.min(newX, boardRect.width - 224))
+    newY = Math.max(0, Math.min(newY, boardRect.height - 224))
 
     pos.current = { x: newX, y: newY }
     elRef.current.style.left = `${newX}px`
@@ -293,12 +354,12 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
       style={{
         left: note.position.x,
         top: note.position.y,
-        zIndex: isDragging ? 100 : 1,
+        zIndex: isDragging ? 9999 : note.zIndex,
         touchAction: "none",
       }}
     >
       <div
-        className={`pointer-events-none relative h-44 w-44 ${note.color} p-3 shadow-2xl transition-shadow duration-200 ${
+        className={`pointer-events-none relative h-56 w-56 ${note.color} p-3 shadow-2xl transition-shadow duration-200 ${
           isDragging ? "shadow-[0_20px_60px_rgba(0,0,0,0.4)]" : ""
         }`}
       >
@@ -310,7 +371,7 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
           <img
             src={note.imageData}
             alt={`${note.author}'s doodle`}
-            className="h-full w-full object-contain"
+            className="absolute inset-0 h-full w-full object-cover"
             draggable={false}
           />
         ) : (
@@ -320,16 +381,28 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
         )}
 
         {/* Author name on hover */}
-        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/70 px-3 py-1 text-xs text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-          {note.author}
-        </div>
+        {note.author && (
+          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/70 px-3 py-1 text-xs text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            {note.author}
+          </div>
+        )}
       </div>
     </motion.div>
   )
 }
 
+// ─── Brush size presets ──────────────────────────────────────────────
+const PEN_SIZES = [1, 2, 4, 8]
+const ERASER_SIZES = [8, 16, 24, 36]
+
 // ─── Default brush colors ────────────────────────────────────────────
-const BRUSH_COLORS = ["#333333", "#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#ffffff"]
+// Customize: add/remove colors here, grid auto-fills into BRUSH_COLORS_COLS columns
+const BRUSH_COLORS_COLS = 2
+const BRUSH_COLORS = [
+  "#333333", "#666666", "#e74c3c", "#e67e22", "#f1c40f",
+  "#2ecc71", "#1abc9c", "#3498db", "#9b59b6", "#e84393",
+  "#ffffff",
+]
 
 // ─── Drawing Modal ──────────────────────────────────────────────────
 interface DrawingModalProps {
@@ -356,6 +429,85 @@ function DrawingModal({
   const [brushColor, setBrushColor] = useState(BRUSH_COLORS[0])
   const [customColor, setCustomColor] = useState("#ff6600")
   const [activeTool, setActiveTool] = useState<"pen" | "eraser">("pen")
+  const [penSize, setPenSize] = useState(2)
+  const [eraserSize, setEraserSize] = useState(12)
+
+  // Undo/Redo history (max 10 steps)
+  const MAX_HISTORY = 10
+  const historyRef = useRef<string[]>([])
+  const redoStackRef = useRef<string[]>([])
+  const [canUndo, setCanUndo] = useState(false)
+  const [canRedo, setCanRedo] = useState(false)
+
+  // Save current state to history on each stroke end
+  const saveToHistory = useCallback(() => {
+    if (!canvasRef.current) return
+    const data = canvasRef.current.getSaveData() as string
+    historyRef.current.push(data)
+    if (historyRef.current.length > MAX_HISTORY + 1) {
+      historyRef.current.shift()
+    }
+    redoStackRef.current = []
+    setCanUndo(historyRef.current.length > 1)
+    setCanRedo(false)
+  }, [canvasRef])
+
+  // Capture initial empty state
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (canvasRef.current) {
+        historyRef.current = [canvasRef.current.getSaveData() as string]
+        setCanUndo(false)
+        setCanRedo(false)
+      }
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [canvasRef])
+
+  // Listen for pointer up globally to detect stroke end (even if pointer leaves canvas)
+  useEffect(() => {
+    const handleUp = () => {
+      setTimeout(saveToHistory, 50)
+    }
+    window.addEventListener("pointerup", handleUp)
+    return () => window.removeEventListener("pointerup", handleUp)
+  }, [saveToHistory])
+
+  const handleUndo = useCallback(() => {
+    if (historyRef.current.length <= 1 || !canvasRef.current) return
+    const current = historyRef.current.pop()!
+    redoStackRef.current.push(current)
+    if (redoStackRef.current.length > MAX_HISTORY) redoStackRef.current.shift()
+    const prev = historyRef.current[historyRef.current.length - 1]
+    canvasRef.current.loadSaveData(prev, true)
+    setCanUndo(historyRef.current.length > 1)
+    setCanRedo(true)
+  }, [canvasRef])
+
+  const handleRedo = useCallback(() => {
+    if (redoStackRef.current.length === 0 || !canvasRef.current) return
+    const next = redoStackRef.current.pop()!
+    historyRef.current.push(next)
+    canvasRef.current.loadSaveData(next, true)
+    setCanUndo(historyRef.current.length > 1)
+    setCanRedo(redoStackRef.current.length > 0)
+  }, [canvasRef])
+
+  // Keyboard shortcuts: Ctrl+Z / Ctrl+Shift+Z
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault()
+        handleUndo()
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && e.shiftKey) {
+        e.preventDefault()
+        handleRedo()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [handleUndo, handleRedo])
 
   return (
     <motion.div
@@ -400,27 +552,27 @@ function DrawingModal({
             placeholder="你的名字（選填）"
             value={authorName}
             onChange={(e) => onAuthorChange(e.target.value)}
-            className="w-full rounded-lg bg-white/90 px-4 py-2 text-sm shadow-lg outline-none backdrop-blur-sm focus:ring-2 focus:ring-white/50"
+            className="w-full rounded-sm bg-white/90 px-4 py-2 text-sm shadow-lg outline-none backdrop-blur-sm focus:ring-2 focus:ring-white/50"
           />
 
           {/* Canvas */}
-          <div className="overflow-hidden rounded-lg shadow-2xl">
+          <div className="overflow-hidden shadow-2xl">
             <CanvasDraw
               ref={canvasRef}
-              brushRadius={activeTool === "eraser" ? 12 : 2}
-              brushColor={activeTool === "eraser" ? "#ffffff" : brushColor}
+              brushRadius={activeTool === "eraser" ? eraserSize : penSize}
+              brushColor={activeTool === "eraser" ? STICKY_RAW_COLORS[selectedColor] : brushColor}
               lazyRadius={0}
-              canvasWidth={560}
-              canvasHeight={400}
-              backgroundColor="#ffffff"
+              canvasWidth={550}
+              canvasHeight={550}
+              backgroundColor={STICKY_RAW_COLORS[selectedColor]}
               hideGrid
             />
           </div>
         </div>
 
-        {/* Right toolbar - two rows */}
-        <div className="flex flex-col items-center justify-between self-stretch">
-          {/* Top: Close */}
+        {/* Right toolbar */}
+        <div className="flex flex-col items-center gap-4 self-stretch">
+          {/* Close */}
           <button
             onClick={onClose}
             className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/90 text-slate-500 shadow-lg backdrop-blur-sm transition-colors hover:bg-white hover:text-slate-800"
@@ -428,102 +580,131 @@ function DrawingModal({
             <X className="h-5 w-5" />
           </button>
 
-          {/* Middle: Tools split into two columns */}
-          <div className="flex gap-3">
-            {/* Column 1: Tools */}
-            <div className="flex flex-col items-center gap-2.5">
-              {/* Pen */}
-              <button
-                onClick={() => setActiveTool("pen")}
-                className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-full shadow-lg transition-all ${
-                  activeTool === "pen" ? "bg-white text-slate-800 scale-110" : "bg-white/60 text-slate-500 hover:bg-white/80"
-                }`}
-                title="畫筆"
-              >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
-                </svg>
-              </button>
+          <div className="h-px w-10 bg-white/20" />
 
-              {/* Eraser */}
-              <button
-                onClick={() => setActiveTool("eraser")}
-                className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-full shadow-lg transition-all ${
-                  activeTool === "eraser" ? "bg-white text-slate-800 scale-110" : "bg-white/60 text-slate-500 hover:bg-white/80"
-                }`}
-                title="橡皮擦"
-              >
-                <Eraser className="h-5 w-5" />
-              </button>
+          {/* Pen & Eraser - one row */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTool("pen")}
+              className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-full shadow-lg transition-all ${
+                activeTool === "pen" ? "bg-white text-slate-800 scale-110" : "bg-white/60 text-slate-500 hover:bg-white/80"
+              }`}
+              title="畫筆"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setActiveTool("eraser")}
+              className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-full shadow-lg transition-all ${
+                activeTool === "eraser" ? "bg-white text-slate-800 scale-110" : "bg-white/60 text-slate-500 hover:bg-white/80"
+              }`}
+              title="橡皮擦"
+            >
+              <Eraser className="h-5 w-5" />
+            </button>
+          </div>
 
-              {/* Undo */}
-              <button
-                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/60 text-slate-500 shadow-lg transition-colors hover:bg-white/80"
-                title="回退"
-              >
-                <Undo2 className="h-4 w-4" />
-              </button>
-
-              {/* Redo */}
-              <button
-                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/60 text-slate-500 shadow-lg transition-colors hover:bg-white/80"
-                title="復原"
-              >
-                <Redo2 className="h-4 w-4" />
-              </button>
-
-              {/* Clear */}
-              <button
-                onClick={onClear}
-                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/60 text-red-400 shadow-lg transition-colors hover:bg-white/80 hover:text-red-500"
-                title="清除全部"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Column 2: Colors */}
-            <div className="flex flex-col items-center gap-2">
-              {BRUSH_COLORS.map((color) => (
+          {/* Size presets */}
+          <div className="flex items-center gap-2">
+            {(activeTool === "pen" ? PEN_SIZES : ERASER_SIZES).map((size) => {
+              const currentSize = activeTool === "pen" ? penSize : eraserSize
+              const setSize = activeTool === "pen" ? setPenSize : setEraserSize
+              const dotSize = Math.max(6, Math.min(size * 2, 24))
+              return (
                 <button
-                  key={color}
-                  onClick={() => { setBrushColor(color); setActiveTool("pen") }}
-                  className={`h-7 w-7 cursor-pointer rounded-full border-2 shadow-md transition-transform ${
-                    brushColor === color && activeTool === "pen" ? "scale-110 border-white" : "border-transparent hover:scale-105"
+                  key={size}
+                  onClick={() => setSize(size)}
+                  className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-all ${
+                    currentSize === size ? "bg-white/90 scale-110" : "bg-white/30 hover:bg-white/50"
                   }`}
-                  style={{ backgroundColor: color }}
-                />
-              ))}
-
-              {/* Custom color picker */}
-              <div className="relative">
-                <label
-                  className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white/60 shadow-md transition-colors hover:bg-white/80"
-                  title="自選顏色"
+                  title={`${size}px`}
                 >
-                  <Pipette className="h-4 w-4 text-slate-500" />
-                  <input
-                    type="color"
-                    value={customColor}
-                    onChange={(e) => {
-                      setCustomColor(e.target.value)
-                      setBrushColor(e.target.value)
-                      setActiveTool("pen")
-                    }}
-                    className="absolute inset-0 cursor-pointer opacity-0"
+                  <span
+                    className="rounded-full bg-slate-700"
+                    style={{ width: dotSize, height: dotSize }}
                   />
-                </label>
-              </div>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Color grid - BRUSH_COLORS_COLS per row */}
+          <div
+            className="grid gap-1.5"
+            style={{ gridTemplateColumns: `repeat(${BRUSH_COLORS_COLS}, 1.75rem)` }}
+          >
+            {BRUSH_COLORS.map((color) => (
+              <button
+                key={color}
+                onClick={() => { setBrushColor(color); setActiveTool("pen") }}
+                className={`h-7 w-7 cursor-pointer rounded-full border-2 shadow-md transition-transform ${
+                  brushColor === color && activeTool === "pen" ? "scale-110 border-white" : "border-transparent hover:scale-105"
+                } ${color === "#ffffff" ? "ring-1 ring-slate-300" : ""}`}
+                style={{ backgroundColor: color }}
+              />
+            ))}
+
+            {/* Custom color picker */}
+            <div className="relative h-7 w-7">
+              <label
+                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white/60 shadow-md transition-colors hover:bg-white/80"
+                title="自選顏色"
+              >
+                <Pipette className="h-4 w-4 text-slate-500" />
+                <input
+                  type="color"
+                  value={customColor}
+                  onChange={(e) => {
+                    setCustomColor(e.target.value)
+                    setBrushColor(e.target.value)
+                    setActiveTool("pen")
+                  }}
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                />
+              </label>
             </div>
           </div>
 
-          {/* Bottom: Save */}
+          {/* Undo & Redo - one row */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleUndo}
+              disabled={!canUndo}
+              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/60 text-slate-500 shadow-lg transition-colors hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-30"
+              title="回退 (Ctrl+Z)"
+            >
+              <Undo2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={handleRedo}
+              disabled={!canRedo}
+              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/60 text-slate-500 shadow-lg transition-colors hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-30"
+              title="復原 (Ctrl+Shift+Z)"
+            >
+              <Redo2 className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Clear - text button */}
+          <button
+            onClick={onClear}
+            className="cursor-pointer text-xs font-medium text-red-400 transition-colors hover:text-red-300"
+          >
+            清除畫板
+          </button>
+
+          <div className="flex-1" />
+
+          {/* Save button */}
           <button
             onClick={onSave}
-            className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-[#122018] text-white shadow-lg transition-colors hover:bg-[#1a3025]"
+            className="flex cursor-pointer items-center gap-2 rounded-full bg-mint px-6 py-3 text-sm font-medium text-white shadow-lg transition-colors hover:bg-mint/80"
             title="完成"
           >
-            <Check className="h-5 w-5" />
+            <Check className="h-4 w-4" />
+            完成
           </button>
         </div>
       </motion.div>
