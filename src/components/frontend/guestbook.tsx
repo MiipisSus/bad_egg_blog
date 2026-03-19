@@ -20,14 +20,6 @@ interface StickyNote {
 const PAGE_SOFT_LIMIT = 10  // "追加畫布" becomes available after this
 const PAGE_HARD_LIMIT = 15  // absolute max per page
 
-const STICKY_COLORS = [
-  "bg-mint/80",
-  "bg-lavender/80",
-  "bg-peach/80",
-  "bg-cream/80",
-  "bg-coral/80",
-]
-
 const STICKY_RAW_COLORS = [
   "#ffffff",
   "#36c9d1",
@@ -47,7 +39,7 @@ export function Guestbook() {
   const [currentPage, setCurrentPage] = useState(0) // visual index: 0 = oldest
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [authorName, setAuthorName] = useState("")
-  const [selectedColor, setSelectedColor] = useState(0)
+  const [selectedColor, setSelectedColor] = useState(STICKY_RAW_COLORS[0])
   const [draggedId, setDraggedId] = useState<number | null>(null)
   const [hint, setHint] = useState<string | null>(null)
   const canvasRef = useRef<DrawingCanvasRef | null>(null)
@@ -74,7 +66,7 @@ export function Guestbook() {
       return
     }
 
-    const imageData = canvasRef.current.getDataURL(STICKY_RAW_COLORS[selectedColor])
+    const imageData = canvasRef.current.getDataURL(selectedColor)
 
     zIndexCounter.current += 1
     const now = Date.now()
@@ -82,7 +74,7 @@ export function Guestbook() {
       id: now,
       imageData,
       author: authorName.trim(),
-      color: STICKY_COLORS[selectedColor],
+      color: selectedColor,
       position: { x: 80, y: 60 },
       zIndex: zIndexCounter.current,
       createdAt: now,
@@ -97,7 +89,7 @@ export function Guestbook() {
     })
     setIsModalOpen(false)
     setAuthorName("")
-    setSelectedColor(0)
+    setSelectedColor(STICKY_RAW_COLORS[0])
   }, [authorName, selectedColor, currentPage, pages])
 
   const handleDragEnd = useCallback((noteId: number, newX: number, newY: number) => {
@@ -120,9 +112,6 @@ export function Guestbook() {
     <section className="min-h-screen pt-24 pb-12">
       {/* Section Header */}
       <div className="container mx-auto px-6 pb-10 text-center">
-        <span className="inline-block rounded-full bg-lavender/40 px-5 py-2 text-sm font-medium text-foreground">
-          Guestbook
-        </span>
         <h2 className="mt-4 text-balance text-4xl font-bold tracking-tight text-foreground md:text-5xl">
           塗鴉簽到簿
         </h2>
@@ -187,7 +176,7 @@ export function Guestbook() {
             className="flex cursor-pointer items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/80"
           >
             <Plus className="h-4 w-4" />
-            新增簽到
+            便利貼
           </button>
         </div>
       </div>
@@ -355,9 +344,10 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
       }}
     >
       <div
-        className={`pointer-events-none relative h-56 w-56 ${note.color} p-3 shadow-2xl transition-shadow duration-200 ${
+        className={`pointer-events-none relative h-56 w-56 p-3 shadow-2xl transition-shadow duration-200 ${
           isDragging ? "shadow-[0_20px_60px_rgba(0,0,0,0.4)]" : ""
         }`}
+        style={{ backgroundColor: note.color }}
       >
         {/* Tape effect */}
         <div className="absolute -top-3 left-1/2 h-6 w-12 -translate-x-1/2 bg-white/30" />
@@ -403,9 +393,9 @@ const BRUSH_COLORS = [
 interface DrawingModalProps {
   canvasRef: React.MutableRefObject<DrawingCanvasRef | null>
   authorName: string
-  selectedColor: number
+  selectedColor: string
   onAuthorChange: (name: string) => void
-  onColorChange: (index: number) => void
+  onColorChange: (color: string) => void
   onClear: () => void
   onSave: () => void
   onClose: () => void
@@ -454,16 +444,34 @@ function DrawingModal({
           {/* Sticky note color picker */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-white/60">便利貼顏色：</span>
-            {STICKY_RAW_COLORS.map((color, i) => (
+            {STICKY_RAW_COLORS.map((color) => (
               <button
                 key={color}
-                onClick={() => onColorChange(i)}
+                onClick={() => onColorChange(color)}
                 className={`h-7 w-7 cursor-pointer rounded border-2 shadow-md transition-transform ${
-                  selectedColor === i ? "scale-110 border-white" : "border-transparent hover:scale-105"
+                  selectedColor === color ? "scale-110 border-white" : "border-transparent hover:scale-105"
                 }`}
                 style={{ backgroundColor: color }}
               />
             ))}
+            {/* Custom sticky note color */}
+            <div className="relative h-7 w-7">
+              <label
+                className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded border-2 shadow-md transition-transform ${
+                  !STICKY_RAW_COLORS.includes(selectedColor) ? "scale-110 border-white" : "border-transparent hover:scale-105"
+                }`}
+                style={{ backgroundColor: !STICKY_RAW_COLORS.includes(selectedColor) ? selectedColor : "#ccc" }}
+                title="自選便利貼顏色"
+              >
+                <Pipette className="h-3.5 w-3.5 text-white/70" />
+                <input
+                  type="color"
+                  value={!STICKY_RAW_COLORS.includes(selectedColor) ? selectedColor : "#ffcccc"}
+                  onChange={(e) => onColorChange(e.target.value)}
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                />
+              </label>
+            </div>
           </div>
 
           {/* Author name input */}
@@ -482,8 +490,8 @@ function DrawingModal({
               width={550}
               height={550}
               brushRadius={activeTool === "eraser" ? eraserSize : penSize}
-              brushColor={activeTool === "eraser" ? STICKY_RAW_COLORS[selectedColor] : brushColor}
-              backgroundColor={STICKY_RAW_COLORS[selectedColor]}
+              brushColor={activeTool === "eraser" ? selectedColor : brushColor}
+              backgroundColor={selectedColor}
             />
           </div>
         </div>
