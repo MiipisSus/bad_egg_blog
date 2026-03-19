@@ -9,30 +9,40 @@ const activities = [
     title: "Annual Creative Showcase",
     description: "Our flagship event bringing together artists, designers, and creators to share their work with the community.",
     color: "bg-mint",
+    image: "https://picsum.photos/seed/activity1/1200/800",
   },
   {
     id: 2,
     title: "Weekend Workshop Series",
     description: "Hands-on sessions where members learn new skills from industry professionals and fellow enthusiasts.",
     color: "bg-lavender",
+    image: "https://picsum.photos/seed/activity2/1200/800",
   },
   {
     id: 3,
     title: "Community Meetups",
     description: "Casual gatherings fostering connections and meaningful conversations among our diverse members.",
     color: "bg-coral",
+    image: "https://picsum.photos/seed/activity3/1200/800",
   },
   {
     id: 4,
     title: "Collaborative Projects",
     description: "Team initiatives where members work together on impactful creative and community-driven projects.",
     color: "bg-peach",
+    image: "https://picsum.photos/seed/activity4/1200/800",
   },
 ]
 
 export function Activities() {
   const [activeIndex, setActiveIndex] = useState(0)
+  const [direction, setDirection] = useState(1)
   const activeActivity = activities[activeIndex]
+
+  const handleDotClick = (index: number) => {
+    setDirection(index > activeIndex ? 1 : -1)
+    setActiveIndex(index)
+  }
 
   return (
     <section id="activities" className="relative w-full bg-cream py-20 md:py-32">
@@ -47,7 +57,7 @@ export function Activities() {
       </div>
 
       {/* Content: Left Dots + Right Image */}
-      <div className="flex min-h-[65vh] w-full items-stretch px-6 md:px-12">
+      <div className="flex min-h-[70vh] w-[85dvw] items-stretch px-6 mx-auto md:px-12">
         {/* Left Side: Vertical Decorative Elements */}
         <div className="flex w-12 flex-col items-center justify-center md:w-20">
           <ul className="flex flex-col items-center gap-0">
@@ -55,8 +65,8 @@ export function Activities() {
               <li key={activity.id} className="flex flex-col items-center">
                 {/* Geometric Shape - Dot */}
                 <button
-                  onClick={() => setActiveIndex(index)}
-                  className="group relative flex items-center justify-center"
+                  onClick={() => handleDotClick(index)}
+                  className="group relative flex h-10 w-10 cursor-pointer items-center justify-center"
                 >
                   <motion.div
                     animate={{
@@ -89,26 +99,28 @@ export function Activities() {
 
         {/* Right Side: Large Image Container */}
         <div className="relative flex-1 overflow-hidden rounded-3xl">
-          <AnimatePresence mode="wait">
+          <AnimatePresence initial={false} custom={direction}>
             <motion.div
               key={activeActivity.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              className={`relative h-full w-full ${activeActivity.color}`}
+              custom={direction}
+              variants={{
+                enter: (d: number) => ({ y: d > 0 ? "100%" : "-100%" }),
+                center: { y: 0 },
+                exit: (d: number) => ({ y: d > 0 ? "-100%" : "100%" }),
+              }}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+              className={`absolute inset-0 ${activeActivity.color}`}
             >
-              {/* Subtle Pattern for Visual Interest */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="grid grid-cols-4 gap-4 opacity-15 md:gap-6">
-                  {Array.from({ length: 12 }).map((_, i) => (
-                    <div 
-                      key={i} 
-                      className="h-12 w-12 rounded-2xl bg-white/60 md:h-20 md:w-20" 
-                    />
-                  ))}
-                </div>
-              </div>
+              {/* Background image */}
+              <img
+                src={activeActivity.image}
+                alt={activeActivity.title}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/20" />
 
               {/* Backdrop Blur Text Box - Bottom Left */}
               <div className="absolute bottom-4 left-4 right-4 md:bottom-8 md:left-8 md:right-auto md:max-w-lg">
