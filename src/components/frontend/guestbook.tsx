@@ -3,8 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Plus, Eraser, Check, X, ChevronLeft, ChevronRight, Undo2, Redo2, Pipette } from "lucide-react"
-// @ts-expect-error -- react-canvas-draw has no type definitions
-import CanvasDraw from "react-canvas-draw"
+import { DrawingCanvas, type DrawingCanvasRef } from "./drawing-canvas"
 
 // ─── Types ──────────────────────────────────────────────────────────
 interface StickyNote {
@@ -50,39 +49,31 @@ export function Guestbook() {
   const [selectedColor, setSelectedColor] = useState(0)
   const [draggedId, setDraggedId] = useState<number | null>(null)
   const [hint, setHint] = useState<string | null>(null)
-  const canvasRef = useRef<CanvasDraw | null>(null)
+  const canvasRef = useRef<DrawingCanvasRef | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
 
-  // Visual order: reversed so oldest page is first
-  const displayPages = [...pages].reverse()
-  const totalPages = displayPages.length
-  const pageNotes = displayPages[currentPage] ?? []
+  // pages[0] = newest, pages[last] = oldest. Dots: left = newest, right = oldest.
+  const totalPages = pages.length
+  const pageNotes = pages[currentPage] ?? []
 
   // "追加畫布" available when newest page (pages[0]) has >= PAGE_SOFT_LIMIT
   const canAddPage = pages[0].length >= PAGE_SOFT_LIMIT
 
   const handleAddPage = useCallback(() => {
-    setPages((prev) => {
-      const updated = [[], ...prev]
-      // New page is pages[0], displayed as last visual page (index = updated.length - 1)
-      setCurrentPage(updated.length - 1)
-      return updated
-    })
+    setPages((prev) => [[], ...prev])
+    setCurrentPage(0) // navigate to new page (index 0)
   }, [])
 
   const handleSave = useCallback(() => {
     if (!canvasRef.current) return
 
-    // Map visual currentPage back to pages index
-    const pagesIndex = pages.length - 1 - currentPage
-
-    if (pages[pagesIndex].length >= PAGE_HARD_LIMIT) {
+    if (pages[currentPage].length >= PAGE_HARD_LIMIT) {
       setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！")
       setTimeout(() => setHint(null), 3000)
       return
     }
 
-    const imageData = canvasRef.current.getDataURL("png", false, STICKY_RAW_COLORS[selectedColor]) as string
+    const imageData = canvasRef.current.getDataURL(STICKY_RAW_COLORS[selectedColor])
 
     zIndexCounter.current += 1
     const newNote: StickyNote = {
@@ -98,7 +89,7 @@ export function Guestbook() {
     setMyNoteIds((prev) => new Set(prev).add(newNote.id))
     setPages((prev) => {
       const updated = [...prev]
-      updated[pagesIndex] = [...updated[pagesIndex], newNote]
+      updated[currentPage] = [...updated[currentPage], newNote]
       return updated
     })
     setIsModalOpen(false)
@@ -138,17 +129,20 @@ export function Guestbook() {
       </div>
 
       {/* Toolbar above blackboard */}
-      <div className="container mx-auto relative z-10 flex h-12 items-center justify-center px-6 pb-4 md:px-12">
+      <div className="container mx-auto z-10 flex h-12 items-center px-6 pb-4 md:px-12">
+        {/* Left spacer to balance right buttons for centering */}
+        <div className="flex flex-1" />
+
         {/* Pagination dots - centered */}
-        {totalPages > 1 && (
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center">
+          <div className={`flex items-center gap-3 ${totalPages <= 1 ? "invisible" : ""}`}>
             <button
               onClick={() => setCurrentPage((p) => (p - 1 + totalPages) % totalPages)}
               className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-foreground/50 transition-colors hover:text-foreground"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            {Array.from({ length: totalPages }, (_, i) => (
+            {Array.from({ length: Math.max(totalPages, 1) }, (_, i) => (
               <button
                 key={i}
                 onClick={() => setCurrentPage(i)}
@@ -164,10 +158,10 @@ export function Guestbook() {
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-        )}
+        </div>
 
         {/* Right side buttons */}
-        <div className="absolute right-6 flex items-center gap-3 md:right-12">
+        <div className="flex flex-1 items-center justify-end gap-3">
           {/* Add page button */}
           <button
             onClick={handleAddPage}
@@ -180,8 +174,7 @@ export function Guestbook() {
           {/* Add note button */}
           <button
             onClick={() => {
-              const pagesIndex = pages.length - 1 - currentPage
-              if (pages[pagesIndex].length >= PAGE_HARD_LIMIT) {
+              if (pages[currentPage].length >= PAGE_HARD_LIMIT) {
                 setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！")
                 setTimeout(() => setHint(null), 3000)
                 return
@@ -406,7 +399,7 @@ const BRUSH_COLORS = [
 
 // ─── Drawing Modal ──────────────────────────────────────────────────
 interface DrawingModalProps {
-  canvasRef: React.MutableRefObject<CanvasDraw | null>
+  canvasRef: React.MutableRefObject<DrawingCanvasRef | null>
   authorName: string
   selectedColor: number
   onAuthorChange: (name: string) => void
@@ -432,82 +425,9 @@ function DrawingModal({
   const [penSize, setPenSize] = useState(2)
   const [eraserSize, setEraserSize] = useState(12)
 
-  // Undo/Redo history (max 10 steps)
-  const MAX_HISTORY = 10
-  const historyRef = useRef<string[]>([])
-  const redoStackRef = useRef<string[]>([])
-  const [canUndo, setCanUndo] = useState(false)
-  const [canRedo, setCanRedo] = useState(false)
-
-  // Save current state to history on each stroke end
-  const saveToHistory = useCallback(() => {
-    if (!canvasRef.current) return
-    const data = canvasRef.current.getSaveData() as string
-    historyRef.current.push(data)
-    if (historyRef.current.length > MAX_HISTORY + 1) {
-      historyRef.current.shift()
-    }
-    redoStackRef.current = []
-    setCanUndo(historyRef.current.length > 1)
-    setCanRedo(false)
-  }, [canvasRef])
-
-  // Capture initial empty state
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (canvasRef.current) {
-        historyRef.current = [canvasRef.current.getSaveData() as string]
-        setCanUndo(false)
-        setCanRedo(false)
-      }
-    }, 100)
-    return () => clearTimeout(timer)
-  }, [canvasRef])
-
-  // Listen for pointer up globally to detect stroke end (even if pointer leaves canvas)
-  useEffect(() => {
-    const handleUp = () => {
-      setTimeout(saveToHistory, 50)
-    }
-    window.addEventListener("pointerup", handleUp)
-    return () => window.removeEventListener("pointerup", handleUp)
-  }, [saveToHistory])
-
-  const handleUndo = useCallback(() => {
-    if (historyRef.current.length <= 1 || !canvasRef.current) return
-    const current = historyRef.current.pop()!
-    redoStackRef.current.push(current)
-    if (redoStackRef.current.length > MAX_HISTORY) redoStackRef.current.shift()
-    const prev = historyRef.current[historyRef.current.length - 1]
-    canvasRef.current.loadSaveData(prev, true)
-    setCanUndo(historyRef.current.length > 1)
-    setCanRedo(true)
-  }, [canvasRef])
-
-  const handleRedo = useCallback(() => {
-    if (redoStackRef.current.length === 0 || !canvasRef.current) return
-    const next = redoStackRef.current.pop()!
-    historyRef.current.push(next)
-    canvasRef.current.loadSaveData(next, true)
-    setCanUndo(historyRef.current.length > 1)
-    setCanRedo(redoStackRef.current.length > 0)
-  }, [canvasRef])
-
-  // Keyboard shortcuts: Ctrl+Z / Ctrl+Shift+Z
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
-        e.preventDefault()
-        handleUndo()
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === "z" && e.shiftKey) {
-        e.preventDefault()
-        handleRedo()
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [handleUndo, handleRedo])
+  // Undo/redo is handled inside DrawingCanvas, we just read state from ref
+  const canUndo = canvasRef.current?.canUndo ?? false
+  const canRedo = canvasRef.current?.canRedo ?? false
 
   return (
     <motion.div
@@ -515,7 +435,6 @@ function DrawingModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center"
-      onClick={onClose}
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40" />
@@ -527,7 +446,6 @@ function DrawingModal({
         exit={{ scale: 0.9, opacity: 0 }}
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
         className="relative z-10 flex items-start gap-4"
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Canvas area */}
         <div className="flex flex-col gap-3">
@@ -557,15 +475,13 @@ function DrawingModal({
 
           {/* Canvas */}
           <div className="overflow-hidden shadow-2xl">
-            <CanvasDraw
+            <DrawingCanvas
               ref={canvasRef}
+              width={550}
+              height={550}
               brushRadius={activeTool === "eraser" ? eraserSize : penSize}
               brushColor={activeTool === "eraser" ? STICKY_RAW_COLORS[selectedColor] : brushColor}
-              lazyRadius={0}
-              canvasWidth={550}
-              canvasHeight={550}
               backgroundColor={STICKY_RAW_COLORS[selectedColor]}
-              hideGrid
             />
           </div>
         </div>
@@ -670,7 +586,7 @@ function DrawingModal({
           {/* Undo & Redo - one row */}
           <div className="flex items-center gap-2">
             <button
-              onClick={handleUndo}
+              onClick={() => canvasRef.current?.undo()}
               disabled={!canUndo}
               className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/60 text-slate-500 shadow-lg transition-colors hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-30"
               title="回退 (Ctrl+Z)"
@@ -678,7 +594,7 @@ function DrawingModal({
               <Undo2 className="h-4 w-4" />
             </button>
             <button
-              onClick={handleRedo}
+              onClick={() => canvasRef.current?.redo()}
               disabled={!canRedo}
               className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/60 text-slate-500 shadow-lg transition-colors hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-30"
               title="復原 (Ctrl+Shift+Z)"
