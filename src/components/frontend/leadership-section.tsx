@@ -1,8 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { CreditCard, X } from "lucide-react"
+
+// Generate stable random rotations per leader
+function useRandomRotations(count: number, range: number) {
+  return useMemo(() => {
+    const seed = [1.7, -0.8, 2.1, -1.5, 0.9]
+    return Array.from({ length: count }, (_, i) => seed[i % seed.length] * (range / 2))
+  }, [count, range])
+}
 
 const leaders = [
   {
@@ -58,6 +66,7 @@ const leaders = [
 export function LeadershipSection() {
   const [hoveredId, setHoveredId] = useState<number | null>(null)
   const [nameCardUrl, setNameCardUrl] = useState<string | null>(null)
+  const rotations = useRandomRotations(leaders.length, 3)
 
   return (
     <section className="flex min-h-[95vh] flex-col bg-cream/50 pt-20">
@@ -73,10 +82,11 @@ export function LeadershipSection() {
         </div>
       </div>
 
-      {/* Horizontal Accordion - full width */}
+      {/* Horizontal Accordion - polaroid style */}
       <div className="flex flex-1 w-full overflow-hidden">
-          {leaders.map((leader) => {
+          {leaders.map((leader, index) => {
             const isHovered = hoveredId === leader.id
+            const rotation = rotations[index]
 
             return (
               <motion.div
@@ -85,81 +95,91 @@ export function LeadershipSection() {
                 onMouseLeave={() => setHoveredId(null)}
                 animate={{
                   flex: isHovered ? 5 : 1,
+                  rotate: isHovered ? 0 : rotation,
                 }}
                 transition={{
                   type: "spring",
                   stiffness: 200,
                   damping: 25,
                 }}
-                className={`relative cursor-pointer overflow-hidden ${leader.bgColor}`}
+                className="relative cursor-pointer overflow-hidden bg-white p-2 shadow-sm"
                 onClick={() => leader.nameCard && setNameCardUrl(leader.nameCard)}
               >
-                {/* Full-cover background image with dark overlay */}
-                <img
-                  src={leader.image}
-                  alt={leader.name}
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/40 transition-opacity duration-300" />
+                {/* Inner photo area */}
+                <div className="relative h-full w-full overflow-hidden">
+                  {/* Full-cover background image with dark overlay */}
+                  <img
+                    src={leader.image}
+                    alt={leader.name}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/40 transition-opacity duration-300" />
 
-                {/* Soft inner glow */}
-                <div
-                  className="pointer-events-none absolute inset-0 z-10"
-                  style={{
-                    boxShadow: "inset 0 0 60px rgba(255,255,255,0.1), inset 0 -30px 80px rgba(0,0,0,0.1)",
-                  }}
-                />
+                  {/* Collapsed State */}
+                  <motion.div
+                    animate={{ opacity: isHovered ? 0 : 1 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute inset-0 z-20 flex flex-col items-center justify-end pb-12"
+                  >
+                    <span className="mb-2 rounded-full bg-white px-4 py-1.5 text-xs font-medium text-foreground shadow-sm">
+                      {leader.rank}
+                    </span>
+                    {/* Name with rotation & text-shadow overlap */}
+                    <span
+                      className="relative -mb-2 text-center text-xl font-bold tracking-wide text-white"
+                      style={{
+                        transform: "rotate(-3deg)",
+                        textShadow: "-2px -2px 0 white, 2px -2px 0 white, -2px 2px 0 white, 2px 2px 0 white, 0 -2px 0 white, 0 2px 0 white, -2px 0 0 white, 2px 0 0 white",
+                        color: "#1e293b",
+                      }}
+                    >
+                      {leader.name}
+                    </span>
+                  </motion.div>
 
-                {/* Collapsed State */}
-                <motion.div
-                  animate={{ opacity: isHovered ? 0 : 1 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute inset-0 z-20 flex flex-col items-center justify-end pb-12"
-                >
-                  <span className="mb-2 rounded-full bg-white/20 px-4 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
-                    {leader.rank}
-                  </span>
-                  <span className="text-center text-xl font-bold tracking-wide text-white drop-shadow-md">
-                    {leader.name}
-                  </span>
-                </motion.div>
-
-                {/* Expanded State - Image left, details right */}
-                <motion.div
-                  animate={{ opacity: isHovered ? 1 : 0 }}
-                  transition={{ duration: 0.3, delay: isHovered ? 0.1 : 0 }}
-                  className="absolute inset-0 z-20 flex"
-                >
-                  {/* Left: Photo - image shows through with lighter overlay */}
-                  <div className="relative w-1/2">
-                    <div className="absolute inset-0 bg-black/10" />
-                  </div>
-
-                  {/* Right: Details - transparent bg, white text */}
-                  <div className="relative flex w-1/2 flex-col justify-center p-8">
-                    {/* Name card icon */}
-                    {leader.nameCard && (
-                      <CreditCard className="absolute top-4 right-4 h-6 w-6 text-white drop-shadow-md" />
-                    )}
-                    {/* Rank Badge */}
-                    <div className="mb-4">
-                      <span className="rounded-full bg-white/20 px-4 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
-                        {leader.rank}
-                      </span>
+                  {/* Expanded State - Image left, details right */}
+                  <motion.div
+                    animate={{ opacity: isHovered ? 1 : 0 }}
+                    transition={{ duration: 0.3, delay: isHovered ? 0.1 : 0 }}
+                    className="absolute inset-0 z-20 flex"
+                  >
+                    {/* Left: Photo - image shows through with lighter overlay */}
+                    <div className="relative w-1/2">
+                      <div className="absolute inset-0 bg-black/10" />
                     </div>
 
-                    {/* Name */}
-                    <h3 className="text-2xl font-bold text-white">
-                      {leader.name}
-                    </h3>
+                    {/* Right: Details */}
+                    <div className="relative flex w-1/2 flex-col justify-center p-8">
+                      {/* Name card icon */}
+                      {leader.nameCard && (
+                        <CreditCard className="absolute top-4 right-4 h-6 w-6 text-white drop-shadow-md" />
+                      )}
+                      {/* Rank Badge */}
+                      <div className="mb-4">
+                        <span className="rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-foreground shadow-sm">
+                          {leader.rank}
+                        </span>
+                      </div>
 
-                    {/* Bio */}
-                    <p className="mt-4 text-sm leading-relaxed text-white/80">
-                      {leader.bio}
-                    </p>
+                      {/* Name with overlap effect */}
+                      <h3
+                        className="text-2xl font-bold"
+                        style={{
+                          transform: "rotate(-3deg) translateX(-1rem)",
+                          textShadow: "-2px -2px 0 white, 2px -2px 0 white, -2px 2px 0 white, 2px 2px 0 white, 0 -2px 0 white, 0 2px 0 white, -2px 0 0 white, 2px 0 0 white",
+                          color: "#1e293b",
+                        }}
+                      >
+                        {leader.name}
+                      </h3>
 
-                  </div>
-                </motion.div>
+                      {/* Bio */}
+                      <p className="mt-4 text-sm font-bold leading-relaxed text-white/90">
+                        {leader.bio}
+                      </p>
+                    </div>
+                  </motion.div>
+                </div>
               </motion.div>
             )
           })}

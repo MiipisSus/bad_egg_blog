@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { CreditCard, X } from "lucide-react"
 
@@ -19,8 +19,16 @@ const communityMembers = [
   { id: 12, name: "Lucas Harris", role: "Chef", image: "https://picsum.photos/seed/member12/400/500" },
 ]
 
+// Stable random rotations seeded per index
+const ROTATION_SEEDS = [-3.2, 2.1, -1.5, 4.0, -2.8, 1.7, -0.5, 3.3, -4.1, 2.5, -1.9, 3.8]
+
 export function CommunitySection() {
   const [nameCardUrl, setNameCardUrl] = useState<string | null>(null)
+
+  const rotations = useMemo(
+    () => communityMembers.map((_, i) => ROTATION_SEEDS[i % ROTATION_SEEDS.length]),
+    []
+  )
 
   return (
     <section className="bg-background py-20">
@@ -38,10 +46,15 @@ export function CommunitySection() {
           </p>
         </div>
 
-        {/* Grid - no gap, no rounded corners */}
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {communityMembers.map((member) => (
-            <MemberCard key={member.id} member={member} onNameCardClick={setNameCardUrl} />
+        {/* Polaroid Wall */}
+        <div className="mx-auto max-w-6xl grid grid-cols-2 justify-items-center gap-4 md:grid-cols-4">
+          {communityMembers.map((member, index) => (
+            <PolaroidCard
+              key={member.id}
+              member={member}
+              rotation={rotations[index]}
+              onNameCardClick={setNameCardUrl}
+            />
           ))}
         </div>
       </div>
@@ -79,40 +92,48 @@ export function CommunitySection() {
   )
 }
 
-interface MemberCardProps {
+interface PolaroidCardProps {
   member: (typeof communityMembers)[0]
+  rotation: number
   onNameCardClick: (url: string) => void
 }
 
-function MemberCard({ member, onNameCardClick }: MemberCardProps) {
+function PolaroidCard({ member, rotation, onNameCardClick }: PolaroidCardProps) {
+  const [hovered, setHovered] = useState(false)
+
   return (
     <div
-      className="group relative cursor-pointer overflow-hidden"
+      className="cursor-pointer transition-all duration-300 ease-out"
+      style={{
+        transform: `rotate(${hovered ? 0 : rotation}deg) scale(${hovered ? 1.1 : 1})`,
+        zIndex: hovered ? 50 : 0,
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       onClick={() => member.nameCard && onNameCardClick(member.nameCard)}
     >
-      {/* Background image - scales on hover */}
-      <img
-        src={member.image}
-        alt={member.name}
-        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
-      />
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/40 transition-colors duration-300 group-hover:bg-black/50" />
+      {/* Polaroid frame */}
+      <div className={`w-full bg-white p-2 pb-10 shadow-md transition-shadow duration-300 ${hovered ? "shadow-xl" : ""}`}>
+        {/* Photo */}
+        <div className="relative aspect-square overflow-hidden">
+          <img
+            src={member.image}
+            alt={member.name}
+            className="h-full w-full object-cover"
+          />
+          {/* Name card icon */}
+          {member.nameCard && (
+            <CreditCard className="absolute top-2 right-2 h-5 w-5 text-white drop-shadow-md" />
+          )}
+        </div>
 
-      {/* Name card icon */}
-      {member.nameCard && (
-        <CreditCard className="absolute top-4 right-4 z-20 h-6 w-6 text-white drop-shadow-md" />
-      )}
-
-      {/* Card Content */}
-      <div className="relative z-10 flex aspect-[4/5] flex-col items-center justify-end p-6 pb-8">
-        {/* Name */}
-        <h3 className="text-center text-xl font-bold text-white drop-shadow-md">{member.name}</h3>
-
-        {/* Role Badge */}
-        <span className="mt-3 inline-block rounded-full bg-white/20 px-4 py-1.5 text-sm font-medium text-white/80 backdrop-blur-sm">
+        {/* Name in bottom white area */}
+        <p className="mt-3 text-center text-sm font-semibold text-slate-700">
+          {member.name}
+        </p>
+        <p className="mt-3 text-center text-sm font-semibold text-slate-400">
           {member.role}
-        </span>
+        </p>
       </div>
     </div>
   )
