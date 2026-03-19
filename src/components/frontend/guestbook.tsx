@@ -13,6 +13,7 @@ interface StickyNote {
   color: string
   position: { x: number; y: number }
   zIndex: number
+  createdAt: number
 }
 
 // ─── Constants ──────────────────────────────────────────────────────
@@ -76,13 +77,15 @@ export function Guestbook() {
     const imageData = canvasRef.current.getDataURL(STICKY_RAW_COLORS[selectedColor])
 
     zIndexCounter.current += 1
+    const now = Date.now()
     const newNote: StickyNote = {
-      id: Date.now(),
+      id: now,
       imageData,
       author: authorName.trim(),
       color: STICKY_COLORS[selectedColor],
       position: { x: 80, y: 60 },
       zIndex: zIndexCounter.current,
+      createdAt: now,
     }
 
     // API: POST /api/guestbook
@@ -373,12 +376,11 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
           </div>
         )}
 
-        {/* Author name on hover */}
-        {note.author && (
-          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/70 px-3 py-1 text-xs text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-            {note.author}
-          </div>
-        )}
+        {/* Info on hover */}
+        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/70 px-3 py-1 text-xs text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+          {note.author && <span>{note.author} · </span>}
+          {new Date(note.createdAt).toLocaleDateString("zh-TW", { year: "numeric", month: "2-digit", day: "2-digit" }).replace(/-/g, "/")}
+        </div>
       </div>
     </motion.div>
   )

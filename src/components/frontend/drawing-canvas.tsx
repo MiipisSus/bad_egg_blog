@@ -20,6 +20,12 @@ interface DrawingCanvasProps {
   backgroundColor: string
 }
 
+interface Stroke {
+  points: { x: number; y: number }[]
+  color: string
+  radius: number
+}
+
 const MAX_HISTORY = 10
 
 // ─── Component ──────────────────────────────────────────────────────
@@ -27,53 +33,73 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
   function DrawingCanvas({ width, height, brushColor, brushRadius, backgroundColor }, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const isDrawing = useRef(false)
-    const lastPoint = useRef<{ x: number; y: number } | null>(null)
     const lastOutsideClient = useRef<{ x: number; y: number } | null>(null)
 
-    // Keep brushColor/brushRadius in refs so window listeners always read latest
+    // ── Stroke data (the source of truth) ──
+    const strokesRef = useRef<Stroke[]>([])
+    const currentStrokeRef = useRef<Stroke | null>(null)
+
+    // ── Undo/Redo: store stroke count snapshots ──
+    const historyRef = useRef<number[]>([0]) // [0] = initial empty state
+    const redoStackRef = useRef<Stroke[]>([]) // strokes removed by undo
+    const [canUndo, setCanUndo] = useState(false)
+    const [canRedo, setCanRedo] = useState(false)
+
+    // Keep brush props in refs for window listeners
     const brushColorRef = useRef(brushColor)
     const brushRadiusRef = useRef(brushRadius)
     useEffect(() => { brushColorRef.current = brushColor }, [brushColor])
     useEffect(() => { brushRadiusRef.current = brushRadius }, [brushRadius])
 
-    // History for undo/redo
-    const historyRef = useRef<ImageData[]>([])
-    const redoStackRef = useRef<ImageData[]>([])
-    const [canUndo, setCanUndo] = useState(false)
-    const [canRedo, setCanRedo] = useState(false)
-
     const getCtx = useCallback(() => canvasRef.current?.getContext("2d") ?? null, [])
 
-    const saveState = useCallback(() => {
+    // ── Render everything from stroke data ──
+    const render = useCallback(() => {
       const ctx = getCtx()
       if (!ctx) return
-      const data = ctx.getImageData(0, 0, width, height)
-      historyRef.current.push(data)
-      if (historyRef.current.length > MAX_HISTORY + 1) historyRef.current.shift()
-      redoStackRef.current = []
-      setCanUndo(historyRef.current.length > 1)
-      setCanRedo(false)
-    }, [getCtx, width, height])
 
-    const fillBackground = useCallback(() => {
-      const ctx = getCtx()
-      if (!ctx) return
+      // 1. Clear
+      ctx.clearRect(0, 0, width, height)
+
+      // 2. Background layer
       ctx.fillStyle = backgroundColor
       ctx.fillRect(0, 0, width, height)
-    }, [getCtx, backgroundColor, width, height])
 
-    // Init
-    useEffect(() => {
-      fillBackground()
-      const ctx = getCtx()
-      if (ctx) {
-        historyRef.current = [ctx.getImageData(0, 0, width, height)]
-        setCanUndo(false)
-        setCanRedo(false)
+      // 3. Drawing layer: replay all strokes
+      const allStrokes = [...strokesRef.current]
+      if (currentStrokeRef.current) allStrokes.push(currentStrokeRef.current)
+
+      for (const stroke of allStrokes) {
+        if (stroke.points.length === 0) continue
+
+        ctx.strokeStyle = stroke.color
+        ctx.lineWidth = stroke.radius * 2
+        ctx.lineCap = "round"
+        ctx.lineJoin = "round"
+
+        if (stroke.points.length === 1) {
+          // Single dot
+          ctx.beginPath()
+          ctx.arc(stroke.points[0].x, stroke.points[0].y, stroke.radius, 0, Math.PI * 2)
+          ctx.fillStyle = stroke.color
+          ctx.fill()
+        } else {
+          ctx.beginPath()
+          ctx.moveTo(stroke.points[0].x, stroke.points[0].y)
+          for (let i = 1; i < stroke.points.length; i++) {
+            ctx.lineTo(stroke.points[i].x, stroke.points[i].y)
+          }
+          ctx.stroke()
+        }
       }
-    }, [fillBackground, getCtx, width, height])
+    }, [getCtx, width, height, backgroundColor])
 
-    // Convert client coords to canvas coords; null if outside
+    // Re-render when backgroundColor changes
+    useEffect(() => {
+      render()
+    }, [render])
+
+    // ── Coordinate helpers ──
     const toCanvasPoint = useCallback((clientX: number, clientY: number) => {
       const canvas = canvasRef.current
       if (!canvas) return null
@@ -86,7 +112,6 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       return { x, y }
     }, [width, height])
 
-    // Same as above but clamped to edge (for exit compensation)
     const toClampedPoint = useCallback((clientX: number, clientY: number) => {
       const canvas = canvasRef.current
       if (!canvas) return { x: 0, y: 0 }
@@ -99,7 +124,8 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       }
     }, [width, height])
 
-    const drawLine = useCallback((from: { x: number; y: number }, to: { x: number; y: number }) => {
+    // ── Draw the latest segment incrementally (for performance during active drawing) ──
+    const drawSegment = useCallback((from: { x: number; y: number }, to: { x: number; y: number }) => {
       const ctx = getCtx()
       if (!ctx) return
       ctx.beginPath()
@@ -112,15 +138,22 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       ctx.stroke()
     }, [getCtx])
 
-    // ── Pointer down on canvas: start drawing ──
+    // ── Pointer down: start new stroke ──
     const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
       e.preventDefault()
       isDrawing.current = true
+      lastOutsideClient.current = null
+
       const point = toCanvasPoint(e.clientX, e.clientY)
       if (!point) return
-      lastPoint.current = point
 
-      // Draw a dot for single click
+      currentStrokeRef.current = {
+        points: [point],
+        color: brushColorRef.current,
+        radius: brushRadiusRef.current,
+      }
+
+      // Draw dot immediately
       const ctx = getCtx()
       if (ctx) {
         ctx.beginPath()
@@ -130,101 +163,141 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       }
     }, [toCanvasPoint, getCtx])
 
-    // ── Window pointermove ──
+    // ── Pointer move (window): track stroke ──
     useEffect(() => {
       const handleMove = (e: PointerEvent) => {
-        if (!isDrawing.current) return
+        if (!isDrawing.current || !currentStrokeRef.current) return
 
         const point = toCanvasPoint(e.clientX, e.clientY)
 
         if (point === null) {
-          // Outside canvas: draw to edge on first exit, then track outside position
-          if (lastPoint.current) {
+          // Exiting: draw to clamped edge
+          const pts = currentStrokeRef.current.points
+          if (pts.length > 0) {
             const edgePoint = toClampedPoint(e.clientX, e.clientY)
-            drawLine(lastPoint.current, edgePoint)
-            lastPoint.current = null
+            drawSegment(pts[pts.length - 1], edgePoint)
+            currentStrokeRef.current.points.push(edgePoint)
           }
           lastOutsideClient.current = { x: e.clientX, y: e.clientY }
           return
         }
 
         // Inside canvas
-        if (lastPoint.current) {
-          // Normal drawing
-          drawLine(lastPoint.current, point)
-        } else if (lastOutsideClient.current) {
-          // Just re-entered: use last outside coords to find the edge entry point
+        const pts = currentStrokeRef.current.points
+        if (lastOutsideClient.current) {
+          // Re-entering: draw from edge to current point
           const edgePoint = toClampedPoint(lastOutsideClient.current.x, lastOutsideClient.current.y)
-          drawLine(edgePoint, point)
+          currentStrokeRef.current.points.push(edgePoint)
+          drawSegment(edgePoint, point)
           lastOutsideClient.current = null
+        } else if (pts.length > 0) {
+          drawSegment(pts[pts.length - 1], point)
         }
-        lastPoint.current = point
+
+        currentStrokeRef.current.points.push(point)
       }
 
       window.addEventListener("pointermove", handleMove)
       return () => window.removeEventListener("pointermove", handleMove)
-    }, [toCanvasPoint, toClampedPoint, drawLine])
+    }, [toCanvasPoint, toClampedPoint, drawSegment])
 
-    // ── Window pointerup: stop drawing anywhere ──
+    // ── Pointer up (window): finish stroke ──
     useEffect(() => {
       const handleUp = () => {
         if (!isDrawing.current) return
         isDrawing.current = false
-        lastPoint.current = null
-        saveState()
+        lastOutsideClient.current = null
+
+        if (currentStrokeRef.current && currentStrokeRef.current.points.length > 0) {
+          strokesRef.current.push(currentStrokeRef.current)
+          currentStrokeRef.current = null
+
+          // Save history
+          historyRef.current.push(strokesRef.current.length)
+          if (historyRef.current.length > MAX_HISTORY + 1) historyRef.current.shift()
+          redoStackRef.current = []
+          setCanUndo(historyRef.current.length > 1)
+          setCanRedo(false)
+        }
       }
 
       window.addEventListener("pointerup", handleUp)
       return () => window.removeEventListener("pointerup", handleUp)
-    }, [saveState])
+    }, [])
 
-
-    // Undo
+    // ── Undo: remove last stroke ──
     const undo = useCallback(() => {
-      const ctx = getCtx()
-      if (!ctx || historyRef.current.length <= 1) return
-      const current = historyRef.current.pop()!
-      redoStackRef.current.push(current)
-      if (redoStackRef.current.length > MAX_HISTORY) redoStackRef.current.shift()
-      const prev = historyRef.current[historyRef.current.length - 1]
-      ctx.putImageData(prev, 0, 0)
+      if (historyRef.current.length <= 1) return
+      historyRef.current.pop()
+      const targetLen = historyRef.current[historyRef.current.length - 1]
+      // Move removed strokes to redo stack
+      while (strokesRef.current.length > targetLen) {
+        redoStackRef.current.push(strokesRef.current.pop()!)
+      }
       setCanUndo(historyRef.current.length > 1)
       setCanRedo(true)
-    }, [getCtx])
+      render()
+    }, [render])
 
-    // Redo
+    // ── Redo: restore last undone stroke ──
     const redo = useCallback(() => {
-      const ctx = getCtx()
-      if (!ctx || redoStackRef.current.length === 0) return
-      const next = redoStackRef.current.pop()!
-      historyRef.current.push(next)
-      ctx.putImageData(next, 0, 0)
+      if (redoStackRef.current.length === 0) return
+      strokesRef.current.push(redoStackRef.current.pop()!)
+      historyRef.current.push(strokesRef.current.length)
       setCanUndo(historyRef.current.length > 1)
       setCanRedo(redoStackRef.current.length > 0)
-    }, [getCtx])
+      render()
+    }, [render])
 
-    // Clear
+    // ── Clear ──
     const clear = useCallback(() => {
-      fillBackground()
-      saveState()
-    }, [fillBackground, saveState])
+      strokesRef.current = []
+      currentStrokeRef.current = null
+      historyRef.current = [0]
+      redoStackRef.current = []
+      setCanUndo(false)
+      setCanRedo(false)
+      render()
+    }, [render])
 
-    // Get data URL
+    // ── Export ──
     const getDataURL = useCallback((bgColor: string) => {
-      const canvas = canvasRef.current
-      if (!canvas) return ""
       const tempCanvas = document.createElement("canvas")
       tempCanvas.width = width
       tempCanvas.height = height
-      const tempCtx = tempCanvas.getContext("2d")
-      if (!tempCtx) return ""
-      tempCtx.fillStyle = bgColor
-      tempCtx.fillRect(0, 0, width, height)
-      tempCtx.drawImage(canvas, 0, 0)
+      const ctx = tempCanvas.getContext("2d")
+      if (!ctx) return ""
+
+      // Background
+      ctx.fillStyle = bgColor
+      ctx.fillRect(0, 0, width, height)
+
+      // Replay strokes
+      for (const stroke of strokesRef.current) {
+        if (stroke.points.length === 0) continue
+        ctx.strokeStyle = stroke.color
+        ctx.lineWidth = stroke.radius * 2
+        ctx.lineCap = "round"
+        ctx.lineJoin = "round"
+        if (stroke.points.length === 1) {
+          ctx.beginPath()
+          ctx.arc(stroke.points[0].x, stroke.points[0].y, stroke.radius, 0, Math.PI * 2)
+          ctx.fillStyle = stroke.color
+          ctx.fill()
+        } else {
+          ctx.beginPath()
+          ctx.moveTo(stroke.points[0].x, stroke.points[0].y)
+          for (let i = 1; i < stroke.points.length; i++) {
+            ctx.lineTo(stroke.points[i].x, stroke.points[i].y)
+          }
+          ctx.stroke()
+        }
+      }
+
       return tempCanvas.toDataURL("image/png")
     }, [width, height])
 
-    // Keyboard shortcuts
+    // ── Keyboard shortcuts ──
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
         if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
@@ -240,6 +313,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       return () => window.removeEventListener("keydown", handleKeyDown)
     }, [undo, redo])
 
+    // ── Expose ref ──
     useImperativeHandle(ref, () => ({
       clear,
       undo,
