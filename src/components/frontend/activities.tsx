@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 
 const activities = [
@@ -39,9 +39,25 @@ export function Activities() {
   const [direction, setDirection] = useState(1)
   const activeActivity = activities[activeIndex]
 
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const resetTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current)
+    timerRef.current = setInterval(() => {
+      setDirection(1)
+      setActiveIndex((prev) => (prev + 1) % activities.length)
+    }, 5000)
+  }, [])
+
+  useEffect(() => {
+    resetTimer()
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [resetTimer])
+
   const handleDotClick = (index: number) => {
     setDirection(index > activeIndex ? 1 : -1)
     setActiveIndex(index)
+    resetTimer()
   }
 
   return (
@@ -97,8 +113,9 @@ export function Activities() {
           </ul>
         </div>
 
-        {/* Right Side: Large Image Container */}
-        <div className="relative flex-1 overflow-hidden rounded-3xl">
+        {/* Right Side: Large Image Container with photo frame */}
+        <div className="relative flex-1 bg-white p-3 shadow-md">
+          <div className="relative h-full w-full overflow-hidden border border-slate-100">
           <AnimatePresence initial={false} custom={direction}>
             <motion.div
               key={activeActivity.id}
@@ -151,6 +168,7 @@ export function Activities() {
               </div>
             </motion.div>
           </AnimatePresence>
+          </div>
         </div>
       </div>
     </section>
