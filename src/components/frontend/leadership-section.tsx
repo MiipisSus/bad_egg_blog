@@ -83,7 +83,7 @@ export function LeadershipSection() {
       </div>
 
       {/* Horizontal Accordion - polaroid style */}
-      <div className="flex flex-1 w-full overflow-hidden">
+      <div className="flex flex-1 w-full py-4 overflow-x-clip">
           {leaders.map((leader, index) => {
             const isHovered = hoveredId === leader.id
             const rotation = rotations[index]
