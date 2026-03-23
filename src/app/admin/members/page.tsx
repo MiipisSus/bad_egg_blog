@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import type { Member } from "@/types/member"
-import { Pencil, Trash2, Plus, X, Upload, GripVertical } from "lucide-react"
+import { Pencil, Trash2, Plus, X, Upload, GripVertical, CreditCard } from "lucide-react"
 import {
   DndContext,
   closestCenter,
@@ -219,9 +219,9 @@ export default function AdminMembersPage() {
         </button>
       </div>
 
-      {/* Toast */}
+      {/* Toast - fixed floating */}
       {message && (
-        <div className={`mt-4 rounded-lg px-4 py-3 text-sm font-medium ${message.type === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+        <div className={`fixed top-6 right-6 z-100 rounded-lg px-5 py-3 text-sm font-medium shadow-lg backdrop-blur-md ${message.type === "success" ? "bg-green-100/70 text-green-800" : "bg-red-100/70 text-red-800"}`}>
           {message.text}
         </div>
       )}
@@ -293,7 +293,7 @@ export default function AdminMembersPage() {
                 <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">No members.</td></tr>
               ) : (
                 displayMembers.map((member) => (
-                  <tr key={member.id} className={`border-b border-border last:border-0 ${PRIORITY_ROLES.includes(member.role) && tab === "community" ? "bg-amber-50/50" : ""}`}>
+                  <tr key={member.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3">
                       {member.image ? (
                         <img src={member.image} alt="" className="h-10 w-10 rounded-full object-cover" />
@@ -301,12 +301,7 @@ export default function AdminMembersPage() {
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground">N/A</div>
                       )}
                     </td>
-                    <td className="px-4 py-3 font-medium">
-                      {member.name}
-                      {PRIORITY_ROLES.includes(member.role) && tab === "community" && (
-                        <span className="ml-2 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">固定排序</span>
-                      )}
-                    </td>
+                    <td className="px-4 py-3 font-medium">{member.name}</td>
                     <td className="px-4 py-3 text-muted-foreground">{member.role}</td>
                     <td className="px-4 py-3 text-right">
                       <button onClick={() => openEdit(member)} className="mr-2 cursor-pointer text-muted-foreground hover:text-foreground"><Pencil className="h-4 w-4" /></button>
@@ -320,83 +315,148 @@ export default function AdminMembersPage() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal with preview */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
-            <button onClick={() => setShowModal(false)} className="absolute right-4 top-4 cursor-pointer text-muted-foreground hover:text-foreground">
-              <X className="h-5 w-5" />
-            </button>
-
-            <h2 className="text-lg font-bold">{editingId ? "Edit Member" : "Add Member"}</h2>
-
-            <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
-              <div>
-                <label className="text-sm font-medium">Name *</label>
-                <input
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Role *</label>
-                <select
-                  required
-                  value={form.role}
-                  onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
-                >
-                  {ROLE_OPTIONS.map((role) => (
-                    <option key={role} value={role}>{role}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Bio</label>
-                <textarea
-                  value={form.bio}
-                  onChange={(e) => setForm((p) => ({ ...p, bio: e.target.value }))}
-                  rows={3}
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Photo</label>
-                <div className="mt-1 flex items-center gap-3">
-                  {imagePreview && <img src={imagePreview} alt="" className="h-16 w-16 rounded-lg object-cover" />}
-                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 py-2 text-sm text-muted-foreground hover:border-foreground/40">
-                    <Upload className="h-4 w-4" />
-                    Choose file
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange("image", e.target.files?.[0] || null)} />
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Name Card</label>
-                <div className="mt-1 flex items-center gap-3">
-                  {nameCardPreview && <img src={nameCardPreview} alt="" className="h-16 w-24 rounded-lg object-cover" />}
-                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 py-2 text-sm text-muted-foreground hover:border-foreground/40">
-                    <Upload className="h-4 w-4" />
-                    Choose file
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange("nameCard", e.target.files?.[0] || null)} />
-                  </label>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={saving}
-                className="mt-2 cursor-pointer rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
-              >
-                {saving ? "Saving..." : editingId ? "Update Member" : "Create Member"}
+          <div className="relative flex max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl bg-background shadow-xl">
+            {/* Left: Form */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <button onClick={() => setShowModal(false)} className="absolute right-4 top-4 cursor-pointer text-muted-foreground hover:text-foreground">
+                <X className="h-5 w-5" />
               </button>
-            </form>
+
+              <h2 className="text-lg font-bold">{editingId ? "Edit Member" : "Add Member"}</h2>
+
+              <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
+                <div>
+                  <label className="text-sm font-medium">Name *</label>
+                  <input
+                    required
+                    value={form.name}
+                    onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Role *</label>
+                  <select
+                    required
+                    value={form.role}
+                    onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+                  >
+                    {ROLE_OPTIONS.map((role) => (
+                      <option key={role} value={role}>{role}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Bio</label>
+                  <textarea
+                    value={form.bio}
+                    onChange={(e) => setForm((p) => ({ ...p, bio: e.target.value }))}
+                    rows={3}
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Photo</label>
+                  <div className="mt-1 flex items-center gap-3">
+                    {imagePreview && <img src={imagePreview} alt="" className="h-16 w-16 rounded-lg object-cover" />}
+                    <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 py-2 text-sm text-muted-foreground hover:border-foreground/40">
+                      <Upload className="h-4 w-4" />
+                      Choose file
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange("image", e.target.files?.[0] || null)} />
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Name Card</label>
+                  <div className="mt-1 flex items-center gap-3">
+                    {nameCardPreview && <img src={nameCardPreview} alt="" className="h-16 w-24 rounded-lg object-cover" />}
+                    <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 py-2 text-sm text-muted-foreground hover:border-foreground/40">
+                      <Upload className="h-4 w-4" />
+                      Choose file
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange("nameCard", e.target.files?.[0] || null)} />
+                    </label>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="mt-2 cursor-pointer rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : editingId ? "Update Member" : "Create Member"}
+                </button>
+              </form>
+            </div>
+
+            {/* Right: Live Preview */}
+            <div className="flex w-72 flex-col items-center justify-center gap-6 border-l border-border bg-muted/30 p-6">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Preview</p>
+
+              {/* Leader style preview */}
+              {LEADER_ROLES.includes(form.role) ? (
+                <div className="relative h-64 w-48 overflow-hidden bg-white p-1.5 shadow-md" style={{ transform: "rotate(-2deg)" }}>
+                  <div className="relative h-full w-full overflow-hidden">
+                    {imagePreview ? (
+                      <img src={imagePreview} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                    ) : (
+                      <div className="absolute inset-0 bg-muted" />
+                    )}
+                    <div className="absolute inset-0 bg-black/40" />
+                    <div className="absolute inset-0 flex flex-col items-center justify-end pb-6">
+                      <span className="mb-1.5 rounded-full bg-white px-3 py-1 text-[10px] font-medium text-foreground shadow-sm">
+                        {form.role || "Role"}
+                      </span>
+                      <span
+                        className="text-center text-sm font-bold"
+                        style={{
+                          transform: "rotate(-3deg)",
+                          textShadow: "-1px -1px 0 white, 1px -1px 0 white, -1px 1px 0 white, 1px 1px 0 white",
+                          color: "#1e293b",
+                        }}
+                      >
+                        {form.name || "Name"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Community polaroid style preview */
+                <div style={{ transform: "rotate(-3deg)" }}>
+                  <div className="w-44 bg-white p-1.5 pb-8 shadow-md">
+                    <div className="relative aspect-square overflow-hidden">
+                      {imagePreview ? (
+                        <img src={imagePreview} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-muted text-2xl font-bold text-muted-foreground">
+                          {form.name ? form.name.charAt(0) : "?"}
+                        </div>
+                      )}
+                      {nameCardPreview && (
+                        <CreditCard className="absolute top-1.5 right-1.5 h-4 w-4 text-white drop-shadow-md" />
+                      )}
+                    </div>
+                    <p className="mt-2 text-center text-xs font-semibold text-slate-700">
+                      {form.name || "Name"}
+                    </p>
+                    <p className="mt-1 text-center text-xs text-slate-400">
+                      {form.role || "Role"}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-center text-[10px] text-muted-foreground">
+                {LEADER_ROLES.includes(form.role) ? "Leader accordion style" : "Polaroid card style"}
+              </p>
+            </div>
           </div>
         </div>
       )}
