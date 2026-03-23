@@ -2,6 +2,7 @@ import { Hero } from "@/components/frontend/hero"
 import { AdventureTimeline } from "@/components/frontend/adventure-timeline"
 import { Activities } from "@/components/frontend/activities"
 import { JoinSection } from "@/components/frontend/join-section"
+import { BackToTop } from "@/components/frontend/back-to-top"
 
 export default function HomePage() {
   return (
@@ -12,6 +13,7 @@ export default function HomePage() {
         <Activities />
         <JoinSection />
       </main>
+      <BackToTop />
     </div>
   )
 }

@@ -98,8 +98,8 @@ export function Hero() {
               key={index}
               onClick={() => goToSlide(index)}
               className={`h-2 cursor-pointer rounded-full transition-all ${index === currentSlide
-                ? "w-6 bg-foreground"
-                : "w-2 bg-foreground/30"
+                ? "w-6 bg-white"
+                : "w-2 bg-white/40"
                 }`}
             />
           ))}

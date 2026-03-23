@@ -162,7 +162,7 @@ function TimelineItem({ milestone, index, rotation, isLeft }: TimelineItemProps)
           transition={{ type: "spring", stiffness: 80, damping: 18, delay: 0.35 }}
           className={`w-1/2 ${isLeft ? "pl-16" : "pr-16"} ${isLeft ? "flex justify-start" : "flex justify-end"}`}
         >
-          <div className="w-56 bg-white p-2 shadow-md">
+          <div className="w-56 bg-white p-2 shadow-md transition-all duration-300 hover:scale-105 hover:shadow-xl">
             <div className="overflow-hidden border border-slate-100">
               <img
                 src={milestone.image}

@@ -73,7 +73,7 @@ export function Activities() {
       </div>
 
       {/* Content: Left Dots + Right Image */}
-      <div className="flex min-h-[70vh] w-[85dvw] items-stretch px-6 mx-auto md:px-12">
+      <div className="flex min-h-[80vh] w-[85dvw] items-stretch px-6 mx-auto md:px-12">
         {/* Left Side: Vertical Decorative Elements */}
         <div className="flex w-12 flex-col items-center justify-center md:w-20">
           <ul className="flex flex-col items-center gap-0">
