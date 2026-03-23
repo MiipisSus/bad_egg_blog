@@ -1,16 +1,11 @@
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { writeFile, mkdir } from "fs/promises"
 import path from "path"
 
-// GET /api/members?type=leaders|community|all
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const type = searchParams.get("type") ?? "all"
-
-  const where = type === "all" ? {} : { type }
+// GET /api/members
+export async function GET() {
   const members = await prisma.member.findMany({
-    where,
     orderBy: { createdAt: "desc" },
   })
 
@@ -24,10 +19,7 @@ export async function POST(request: NextRequest) {
 
     const name = formData.get("name") as string
     const role = formData.get("role") as string
-    const type = (formData.get("type") as string) || "community"
-    const title = formData.get("title") as string | null
     const bio = formData.get("bio") as string | null
-    const rank = formData.get("rank") as string | null
 
     if (!name || !role) {
       return NextResponse.json({ error: "name and role are required" }, { status: 400 })
@@ -51,10 +43,7 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         role,
-        type,
-        title: title || null,
         bio: bio || null,
-        rank: rank || null,
         image: imagePath,
         nameCard: nameCardPath,
       },

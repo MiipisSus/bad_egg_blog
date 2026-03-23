@@ -27,7 +27,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const data: Record<string, string | null> = {}
 
-    for (const field of ["name", "role", "type", "title", "bio", "rank"] as const) {
+    for (const field of ["name", "role", "bio"] as const) {
       const value = formData.get(field) as string | null
       if (value !== null) data[field] = value || null
     }

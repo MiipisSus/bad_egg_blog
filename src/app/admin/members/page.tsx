@@ -4,24 +4,20 @@ import { useState, useEffect, useCallback } from "react"
 import type { Member } from "@/types/member"
 import { Pencil, Trash2, Plus, X, Upload } from "lucide-react"
 
+const ROLE_OPTIONS = ["一郎", "二郎", "三郎", "四郎", "五郎"] as const
+
 interface MemberForm {
   name: string
   role: string
-  type: "leader" | "community"
-  title: string
   bio: string
-  rank: string
   image: File | null
   nameCard: File | null
 }
 
 const emptyForm: MemberForm = {
   name: "",
-  role: "",
-  type: "community",
-  title: "",
+  role: ROLE_OPTIONS[0],
   bio: "",
-  rank: "",
   image: null,
   nameCard: null,
 }
@@ -68,10 +64,7 @@ export default function AdminMembersPage() {
     setForm({
       name: member.name,
       role: member.role,
-      type: member.type as "leader" | "community",
-      title: member.title || "",
       bio: member.bio || "",
-      rank: member.rank || "",
       image: null,
       nameCard: null,
     })
@@ -87,10 +80,7 @@ export default function AdminMembersPage() {
     const formData = new FormData()
     formData.append("name", form.name)
     formData.append("role", form.role)
-    formData.append("type", form.type)
-    formData.append("title", form.title)
     formData.append("bio", form.bio)
-    formData.append("rank", form.rank)
     if (form.image) formData.append("image", form.image)
     if (form.nameCard) formData.append("nameCard", form.nameCard)
 
@@ -178,8 +168,6 @@ export default function AdminMembersPage() {
                 <th className="px-4 py-3 text-left font-medium">Image</th>
                 <th className="px-4 py-3 text-left font-medium">Name</th>
                 <th className="px-4 py-3 text-left font-medium">Role</th>
-                <th className="px-4 py-3 text-left font-medium">Type</th>
-                <th className="px-4 py-3 text-left font-medium">Rank</th>
                 <th className="px-4 py-3 text-right font-medium">Actions</th>
               </tr>
             </thead>
@@ -197,23 +185,11 @@ export default function AdminMembersPage() {
                   </td>
                   <td className="px-4 py-3 font-medium">{member.name}</td>
                   <td className="px-4 py-3 text-muted-foreground">{member.role}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        member.type === "leader"
-                          ? "bg-amber-100 text-amber-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}
-                    >
-                      {member.type}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{member.rank || "-"}</td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => openEdit(member)} className="mr-2 text-muted-foreground hover:text-foreground">
+                    <button onClick={() => openEdit(member)} className="mr-2 cursor-pointer text-muted-foreground hover:text-foreground">
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button onClick={() => handleDelete(member.id)} className="text-muted-foreground hover:text-red-600">
+                    <button onClick={() => handleDelete(member.id)} className="cursor-pointer text-muted-foreground hover:text-red-600">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </td>
@@ -221,7 +197,7 @@ export default function AdminMembersPage() {
               ))}
               {members.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
                     No members yet. Click &quot;Add Member&quot; to create one.
                   </td>
                 </tr>
@@ -235,7 +211,7 @@ export default function AdminMembersPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-background p-6 shadow-xl">
-            <button onClick={() => setShowModal(false)} className="absolute right-4 top-4 text-muted-foreground hover:text-foreground">
+            <button onClick={() => setShowModal(false)} className="absolute right-4 top-4 cursor-pointer text-muted-foreground hover:text-foreground">
               <X className="h-5 w-5" />
             </button>
 
@@ -253,50 +229,21 @@ export default function AdminMembersPage() {
                 />
               </div>
 
-              {/* Role */}
+              {/* Role (enum select) */}
               <div>
                 <label className="text-sm font-medium">Role *</label>
-                <input
+                <select
                   required
                   value={form.role}
                   onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}
                   className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
-                />
-              </div>
-
-              {/* Type */}
-              <div>
-                <label className="text-sm font-medium">Type</label>
-                <select
-                  value={form.type}
-                  onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as "leader" | "community" }))}
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
                 >
-                  <option value="community">Community</option>
-                  <option value="leader">Leader</option>
+                  {ROLE_OPTIONS.map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
                 </select>
-              </div>
-
-              {/* Title (optional) */}
-              <div>
-                <label className="text-sm font-medium">Title</label>
-                <input
-                  value={form.title}
-                  onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
-                  placeholder="e.g. President & Founder"
-                />
-              </div>
-
-              {/* Rank */}
-              <div>
-                <label className="text-sm font-medium">Rank</label>
-                <input
-                  value={form.rank}
-                  onChange={(e) => setForm((p) => ({ ...p, rank: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
-                  placeholder="e.g. Executive Leader"
-                />
               </div>
 
               {/* Bio */}
@@ -354,7 +301,7 @@ export default function AdminMembersPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="mt-2 rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
+                className="mt-2 cursor-pointer rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
               >
                 {saving ? "Saving..." : editingId ? "Update Member" : "Create Member"}
               </button>
