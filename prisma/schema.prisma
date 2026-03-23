@@ -22,6 +22,15 @@ model Member {
   updatedAt DateTime @updatedAt
 }
 
+model Timeline {
+  id        Int      @id @default(autoincrement())
+  title     String
+  date      String?  // flexible: "2024-03", "2024-03-15", etc.
+  image     String?
+  sortIndex Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
 model HeroBanner {
   id        Int      @id @default(autoincrement())
   image     String

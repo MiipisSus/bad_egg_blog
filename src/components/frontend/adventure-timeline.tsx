@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useMemo } from "react"
+import { useRef, useMemo, useState, useEffect } from "react"
 import { motion, useInView } from "framer-motion"
 import { MapPin } from "lucide-react"
 
@@ -10,54 +10,38 @@ const MACARON_TEXT_COLORS = ["text-mint", "text-lavender", "text-peach", "text-c
 interface Milestone {
   id: number
   title: string
-  date?: string
-  image?: string
+  date?: string | null
+  image?: string | null
 }
 
-const milestones: Milestone[] = [
-  {
-    id: 1,
-    title: "The Beginning",
-    date: "2021-03-15",
-    image: "https://picsum.photos/seed/milestone1/400/300",
-  },
-  {
-    id: 2,
-    title: "First Official Meetup",
-    date: "2021-06-20",
-  },
-  {
-    id: 3,
-    title: "Summer Festival",
-    image: "https://picsum.photos/seed/milestone3/500/400",
-  },
-  {
-    id: 4,
-    title: "100 Members!",
-    date: "2023-01-05",
-    image: "https://picsum.photos/seed/milestone4/400/350",
-  },
-  {
-    id: 5,
-    title: "Community Award",
-    date: "2023-09-18",
-  },
-  {
-    id: 6,
-    title: "International Collab",
-    date: "2024-04-22",
-    image: "https://picsum.photos/seed/milestone6/450/350",
-  },
-]
-
-// Stable random rotations
 const ROTATION_SEEDS = [-3.5, 2.8, -1.2, 4.1, -2.5, 1.9]
 
+function formatDate(dateStr: string): string {
+  // Month-only: "2024-03"
+  if (/^\d{4}-\d{2}$/.test(dateStr)) {
+    const [y, m] = dateStr.split("-")
+    return new Date(Number(y), Number(m) - 1).toLocaleDateString("en-US", { year: "numeric", month: "long" })
+  }
+  // Full date: "2024-03-15"
+  return new Date(dateStr).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+}
+
 export function AdventureTimeline() {
+  const [milestones, setMilestones] = useState<Milestone[]>([])
+
+  useEffect(() => {
+    fetch("/api/timeline")
+      .then((res) => res.json())
+      .then((data) => setMilestones(data.items))
+      .catch(() => {})
+  }, [])
+
   const rotations = useMemo(
-    () => milestones.map((_, i) => ROTATION_SEEDS[i % ROTATION_SEEDS.length]),
-    []
+    () => milestones.map((_: Milestone, i: number) => ROTATION_SEEDS[i % ROTATION_SEEDS.length]),
+    [milestones]
   )
+
+  if (milestones.length === 0) return null
 
   return (
     <section className="bg-cream/30 py-24">
@@ -142,11 +126,7 @@ function TimelineItem({ milestone, index, rotation, isLeft }: TimelineItemProps)
         {/* Date */}
         {milestone.date && (
           <span className={`text-sm font-semibold ${textColor}`}>
-            {new Date(milestone.date).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
+            {formatDate(milestone.date)}
           </span>
         )}
 
