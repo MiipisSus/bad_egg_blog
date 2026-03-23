@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { motion } from "framer-motion"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
 const carouselImages = [
@@ -108,7 +109,13 @@ export function Hero() {
 
       {/* Club Introduction */}
       <div className="container mx-auto px-4 py-16 md:px-6">
-        <div className="mx-auto max-w-3xl text-center">
+        <motion.div
+          className="mx-auto max-w-3xl text-center"
+          initial={{ scale: 0.6, opacity: 0 }}
+          whileInView={{ scale: 1, opacity: 1 }}
+          viewport={{ once: true, amount: 0.5 }}
+          transition={{ type: "spring", stiffness: 200, damping: 15, duration: 0.6 }}
+        >
           <h1 className="text-balance text-4xl font-semibold tracking-tight text-foreground md:text-5xl lg:text-6xl">
             Welcome to Our Creative Community
           </h1>
@@ -117,7 +124,7 @@ export function Hero() {
             share ideas, and be part of something extraordinary. Together, we create,
             learn, and grow.
           </p>
-        </div>
+        </motion.div>
       </div>
     </section>
   )

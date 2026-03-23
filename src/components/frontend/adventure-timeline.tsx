@@ -63,7 +63,13 @@ export function AdventureTimeline() {
     <section className="bg-cream/30 py-24">
       <div className="container mx-auto px-6">
         {/* Section Header */}
-        <div className="mb-20 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.5 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="mb-20 text-center"
+        >
           <span className="inline-block rounded-full bg-mint/40 px-5 py-2 text-sm font-medium text-foreground">
             Our Journey
           </span>
@@ -73,7 +79,7 @@ export function AdventureTimeline() {
           <p className="mx-auto mt-4 max-w-2xl text-pretty text-muted-foreground">
             Every great story has its milestones — here are ours
           </p>
-        </div>
+        </motion.div>
 
         {/* Timeline */}
         <div className="relative mx-auto max-w-5xl">

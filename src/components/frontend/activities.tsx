@@ -63,17 +63,28 @@ export function Activities() {
   return (
     <section id="activities" className="relative w-full bg-cream py-20 md:py-32">
       {/* Section Header */}
-      <div className="px-6 pb-16 text-center md:px-12 md:pb-20">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.5 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="px-6 pb-16 text-center md:px-12 md:pb-20"
+      >
         <span className="inline-block rounded-full bg-coral/40 px-5 py-2 text-sm font-medium text-foreground">
           What We Do
         </span>
         <h2 className="mt-5 text-balance text-3xl font-semibold tracking-tight text-foreground md:text-4xl lg:text-5xl">
           Club Activities
         </h2>
-      </div>
+      </motion.div>
 
       {/* Content: Left Dots + Right Image */}
-      <div className="flex min-h-[80vh] w-[85dvw] items-stretch px-6 mx-auto md:px-12">
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.2 }}
+        transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
+        className="flex min-h-[80vh] w-[85dvw] items-stretch px-6 mx-auto md:px-12">
         {/* Left Side: Vertical Decorative Elements */}
         <div className="flex w-12 flex-col items-center justify-center md:w-20">
           <ul className="flex flex-col items-center gap-0">
@@ -170,7 +181,7 @@ export function Activities() {
           </AnimatePresence>
           </div>
         </div>
-      </div>
+      </motion.div>
     </section>
   )
 }
