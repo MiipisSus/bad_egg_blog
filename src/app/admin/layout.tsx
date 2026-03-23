@@ -79,6 +79,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             Hero Banners
           </a>
           <a
+            href="/admin/activities"
+            className={`text-sm transition-colors ${pathname === "/admin/activities" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
+          >
+            Activities
+          </a>
+          <a
             href="/admin/timeline"
             className={`text-sm transition-colors ${pathname === "/admin/timeline" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
           >

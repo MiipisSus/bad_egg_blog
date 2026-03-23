@@ -3,40 +3,27 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 
-const activities = [
-  {
-    id: 1,
-    title: "Annual Creative Showcase",
-    description: "Our flagship event bringing together artists, designers, and creators to share their work with the community.",
-    color: "bg-mint",
-    image: "https://picsum.photos/seed/activity1/1200/800",
-  },
-  {
-    id: 2,
-    title: "Weekend Workshop Series",
-    description: "Hands-on sessions where members learn new skills from industry professionals and fellow enthusiasts.",
-    color: "bg-lavender",
-    image: "https://picsum.photos/seed/activity2/1200/800",
-  },
-  {
-    id: 3,
-    title: "Community Meetups",
-    description: "Casual gatherings fostering connections and meaningful conversations among our diverse members.",
-    color: "bg-coral",
-    image: "https://picsum.photos/seed/activity3/1200/800",
-  },
-  {
-    id: 4,
-    title: "Collaborative Projects",
-    description: "Team initiatives where members work together on impactful creative and community-driven projects.",
-    color: "bg-peach",
-    image: "https://picsum.photos/seed/activity4/1200/800",
-  },
-]
+const MACARON_COLORS = ["bg-mint", "bg-lavender", "bg-coral", "bg-peach", "bg-cream"]
+
+interface ActivityData {
+  id: number
+  title: string
+  description: string | null
+  image: string
+}
 
 export function Activities() {
+  const [activities, setActivities] = useState<ActivityData[]>([])
   const [activeIndex, setActiveIndex] = useState(0)
   const [direction, setDirection] = useState(1)
+
+  useEffect(() => {
+    fetch("/api/activities")
+      .then((res) => res.json())
+      .then((data) => { if (data.activities?.length) setActivities(data.activities) })
+      .catch(() => {})
+  }, [])
+
   const activeActivity = activities[activeIndex]
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -45,7 +32,10 @@ export function Activities() {
     if (timerRef.current) clearInterval(timerRef.current)
     timerRef.current = setInterval(() => {
       setDirection(1)
-      setActiveIndex((prev) => (prev + 1) % activities.length)
+      setActivities((curr) => {
+        setActiveIndex((prev) => (prev + 1) % curr.length)
+        return curr
+      })
     }, 5000)
   }, [])
 
@@ -59,6 +49,8 @@ export function Activities() {
     setActiveIndex(index)
     resetTimer()
   }
+
+  if (activities.length === 0 || !activeActivity) return null
 
   return (
     <section id="activities" className="relative w-full bg-cream py-20 md:py-32">
@@ -102,14 +94,14 @@ export function Activities() {
                     }}
                     whileHover={{ scale: 1, opacity: 0.8 }}
                     transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                    className={`relative h-3 w-3 rounded-full ${activity.color} transition-colors duration-300`}
+                    className={`relative h-3 w-3 rounded-full ${MACARON_COLORS[index % MACARON_COLORS.length]} transition-colors duration-300`}
                   >
                     {/* Active Glow Effect */}
                     {activeIndex === index && (
                       <motion.div
                         initial={{ opacity: 0, scale: 0.5 }}
                         animate={{ opacity: 0.6, scale: 2.5 }}
-                        className={`absolute inset-0 rounded-full ${activity.color} blur-md`}
+                        className={`absolute inset-0 rounded-full ${MACARON_COLORS[index % MACARON_COLORS.length]} blur-md`}
                       />
                     )}
                   </motion.div>
@@ -140,7 +132,7 @@ export function Activities() {
               animate="center"
               exit="exit"
               transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-              className={`absolute inset-0 ${activeActivity.color}`}
+              className={`absolute inset-0 ${MACARON_COLORS[activeIndex % MACARON_COLORS.length]}`}
             >
               {/* Background image */}
               <img
