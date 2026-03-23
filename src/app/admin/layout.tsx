@@ -72,6 +72,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             Members
           </a>
+          <a
+            href="/admin/hero"
+            className={`text-sm transition-colors ${pathname === "/admin/hero" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
+          >
+            Hero Banners
+          </a>
         </nav>
 
         {/* Bottom: user & logout */}
