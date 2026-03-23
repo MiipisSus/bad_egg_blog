@@ -5,10 +5,9 @@ export interface Member {
   title?: string
   bio?: string
   rank?: string
-  bgColor: string
-  social?: {
-    twitter?: string
-    instagram?: string
-    linkedin?: string
-  }
+  image?: string | null
+  nameCard?: string | null
+  type: "leader" | "community"
+  createdAt?: string
+  updatedAt?: string
 }

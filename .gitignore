@@ -15,6 +15,13 @@ next.user-config.*
 # Claude Code
 .claude/
 
+# Uploads
+public/uploads/
+
+# Database
+prisma/dev.db
+prisma/dev.db-journal
+
 # Common ignores
 node_modules/
 .next/
