@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Plus, Eraser, Check, X, ChevronLeft, ChevronRight, Undo2, Redo2, Pipette } from "lucide-react"
+import { Plus, Eraser, Check, X, ChevronLeft, ChevronRight, Undo2, Redo2, Pipette, PaintBucket } from "lucide-react"
 import { DrawingCanvas, type DrawingCanvasRef } from "./drawing-canvas"
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -413,7 +413,7 @@ function DrawingModal({
 }: DrawingModalProps) {
   const [brushColor, setBrushColor] = useState(BRUSH_COLORS[0])
   const [customColor, setCustomColor] = useState("#ff6600")
-  const [activeTool, setActiveTool] = useState<"pen" | "eraser">("pen")
+  const [activeTool, setActiveTool] = useState<"pen" | "eraser" | "fill">("pen")
   const [penSize, setPenSize] = useState(2)
   const [eraserSize, setEraserSize] = useState(12)
 
@@ -492,6 +492,7 @@ function DrawingModal({
               brushRadius={activeTool === "eraser" ? eraserSize : penSize}
               brushColor={activeTool === "eraser" ? selectedColor : brushColor}
               backgroundColor={selectedColor}
+              mode={activeTool === "fill" ? "fill" : "draw"}
             />
           </div>
         </div>
@@ -530,10 +531,19 @@ function DrawingModal({
             >
               <Eraser className="h-5 w-5" />
             </button>
+            <button
+              onClick={() => setActiveTool("fill")}
+              className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-full shadow-lg transition-all ${
+                activeTool === "fill" ? "bg-white text-slate-800 scale-110" : "bg-white/60 text-slate-500 hover:bg-white/80"
+              }`}
+              title="油漆桶"
+            >
+              <PaintBucket className="h-5 w-5" />
+            </button>
           </div>
 
-          {/* Size presets */}
-          <div className="flex items-center gap-2">
+          {/* Size presets (hidden for fill tool) */}
+          {activeTool !== "fill" && <div className="flex items-center gap-2">
             {(activeTool === "pen" ? PEN_SIZES : ERASER_SIZES).map((size) => {
               const currentSize = activeTool === "pen" ? penSize : eraserSize
               const setSize = activeTool === "pen" ? setPenSize : setEraserSize
@@ -554,7 +564,7 @@ function DrawingModal({
                 </button>
               )
             })}
-          </div>
+          </div>}
 
           {/* Color grid - BRUSH_COLORS_COLS per row */}
           <div
