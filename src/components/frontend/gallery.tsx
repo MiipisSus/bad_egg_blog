@@ -37,8 +37,20 @@ export function Gallery() {
   useEffect(() => {
     fetch("/api/gallery")
       .then((res) => res.json())
-      .then((data: GalleryPhoto[]) => {
-        setPhotos(data)
+      .then((data) => {
+        // Transform API albums to GalleryPhoto format
+        const albums = data.albums || []
+        const transformed: GalleryPhoto[] = albums.map((album: { id: number; title: string; description: string | null; date: string | null; images: { path: string }[] }) => ({
+          id: album.id,
+          images: album.images.map((img: { path: string }) => img.path),
+          albumTitle: album.title,
+          description: album.description || "",
+          width: 400,
+          height: 400,
+          date: album.date || new Date().toISOString(),
+          category: "",
+        }))
+        setPhotos(transformed)
         setIsLoading(false)
       })
   }, [])
@@ -414,21 +426,29 @@ function GalleryModal({
   onClose: () => void
 }) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
+  const [slideKey, setSlideKey] = useState(0)
   const [direction, setDirection] = useState(0)
   const isMulti = photo.images.length > 1
 
+  const totalImages = photo.images.length
+
   const goNext = useCallback(() => {
+    if (totalImages <= 1) return
     setDirection(1)
-    setCurrentIndex((prev) => (prev + 1) % photo.images.length)
-  }, [photo.images.length])
+    setCurrentIndex((prev) => (prev + 1) % totalImages)
+    setSlideKey((prev) => prev + 1)
+  }, [totalImages])
 
   const goPrev = useCallback(() => {
+    if (totalImages <= 1) return
     setDirection(-1)
-    setCurrentIndex((prev) => (prev - 1 + photo.images.length) % photo.images.length)
-  }, [photo.images.length])
+    setCurrentIndex((prev) => (prev - 1 + totalImages) % totalImages)
+    setSlideKey((prev) => prev + 1)
+  }, [totalImages])
 
   const goTo = useCallback((i: number) => {
     setDirection(i > currentIndex ? 1 : -1)
+    setSlideKey((prev) => prev + 1)
     setCurrentIndex(i)
   }, [currentIndex])
 
@@ -472,9 +492,9 @@ function GalleryModal({
             aspectRatio: `${photo.width}/${photo.height}`,
           }}
         >
-          <AnimatePresence initial={false} custom={direction} mode="popLayout">
+          <AnimatePresence initial={false} custom={direction}>
             <motion.div
-              key={`${currentIndex}-${photo.images[currentIndex]}`}
+              key={slideKey}
               custom={direction}
               variants={polaroidSwapVariants}
               initial="enter"
@@ -493,7 +513,7 @@ function GalleryModal({
               <div className="h-full w-full bg-white p-3 pb-14 shadow-[0_12px_40px_rgb(0,0,0,0.3)]">
                 <div className="relative h-full w-full overflow-hidden">
                   <Image
-                    src={photo.images[currentIndex]}
+                    src={photo.images[currentIndex] || photo.images[0]}
                     alt={`${photo.albumTitle} ${currentIndex + 1}`}
                     fill
                     sizes="(max-width: 1280px) 90vw, 1200px"
