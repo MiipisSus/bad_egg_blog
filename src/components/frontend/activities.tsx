@@ -30,14 +30,12 @@ export function Activities() {
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current)
+    if (activities.length <= 1) return
     timerRef.current = setInterval(() => {
       setDirection(1)
-      setActivities((curr) => {
-        setActiveIndex((prev) => (prev + 1) % curr.length)
-        return curr
-      })
+      setActiveIndex((prev) => (prev + 1) % activities.length)
     }, 5000)
-  }, [])
+  }, [activities.length])
 
   useEffect(() => {
     resetTimer()

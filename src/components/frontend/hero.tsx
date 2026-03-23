@@ -34,13 +34,11 @@ export function Hero() {
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current)
+    if (banners.length <= 1) return
     timerRef.current = setInterval(() => {
-      setBanners((curr) => {
-        setCurrentSlide((prev) => (prev + 1) % curr.length)
-        return curr
-      })
+      setCurrentSlide((prev) => (prev + 1) % banners.length)
     }, 5000)
-  }, [])
+  }, [banners.length])
 
   useEffect(() => {
     resetTimer()
