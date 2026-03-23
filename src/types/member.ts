@@ -8,6 +8,7 @@ export interface Member {
   image?: string | null
   nameCard?: string | null
   type: "leader" | "community"
+  sortIndex?: number
   createdAt?: string
   updatedAt?: string
 }

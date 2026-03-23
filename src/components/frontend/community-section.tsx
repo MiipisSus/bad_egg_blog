@@ -3,37 +3,27 @@
 import { useState, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { CreditCard, X } from "lucide-react"
+import type { Member } from "@/types/member"
 
-const communityMembers = [
-  { id: 1, name: "Emma Thompson", role: "Designer", image: "https://picsum.photos/seed/member1/400/500", nameCard: "https://picsum.photos/seed/mcard1/600/350" },
-  { id: 2, name: "Liam Johnson", role: "Developer", image: "https://picsum.photos/seed/member2/400/500" },
-  { id: 3, name: "Olivia Davis", role: "Photographer", image: "https://picsum.photos/seed/member3/400/500", nameCard: "https://picsum.photos/seed/mcard3/600/350" },
-  { id: 4, name: "Noah Wilson", role: "Writer", image: "https://picsum.photos/seed/member4/400/500" },
-  { id: 5, name: "Ava Martinez", role: "Artist", image: "https://picsum.photos/seed/member5/400/500", nameCard: "https://picsum.photos/seed/mcard5/600/350" },
-  { id: 6, name: "William Brown", role: "Musician", image: "https://picsum.photos/seed/member6/400/500" },
-  { id: 7, name: "Sophia Taylor", role: "Animator", image: "https://picsum.photos/seed/member7/400/500" },
-  { id: 8, name: "James Anderson", role: "Filmmaker", image: "https://picsum.photos/seed/member8/400/500", nameCard: "https://picsum.photos/seed/mcard8/600/350" },
-  { id: 9, name: "Isabella Thomas", role: "Illustrator", image: "https://picsum.photos/seed/member9/400/500" },
-  { id: 10, name: "Benjamin Lee", role: "Sculptor", image: "https://picsum.photos/seed/member10/400/500" },
-  { id: 11, name: "Mia White", role: "Dancer", image: "https://picsum.photos/seed/member11/400/500", nameCard: "https://picsum.photos/seed/mcard11/600/350" },
-  { id: 12, name: "Lucas Harris", role: "Chef", image: "https://picsum.photos/seed/member12/400/500" },
-]
-
-// Stable random rotations seeded per index
 const ROTATION_SEEDS = [-3.2, 2.1, -1.5, 4.0, -2.8, 1.7, -0.5, 3.3, -4.1, 2.5, -1.9, 3.8]
 
-export function CommunitySection() {
+interface CommunitySectionProps {
+  members: Member[]
+}
+
+export function CommunitySection({ members }: CommunitySectionProps) {
   const [nameCardUrl, setNameCardUrl] = useState<string | null>(null)
 
   const rotations = useMemo(
-    () => communityMembers.map((_, i) => ROTATION_SEEDS[i % ROTATION_SEEDS.length]),
-    []
+    () => members.map((_, i) => ROTATION_SEEDS[i % ROTATION_SEEDS.length]),
+    [members]
   )
+
+  if (members.length === 0) return null
 
   return (
     <section className="bg-background py-20">
       <div className="container mx-auto px-6">
-        {/* Section Header */}
         <div className="mb-12 text-center">
           <span className="inline-block rounded-full bg-peach/40 px-5 py-2 text-sm font-medium text-foreground">
             Community
@@ -46,9 +36,8 @@ export function CommunitySection() {
           </p>
         </div>
 
-        {/* Polaroid Wall */}
         <div className="mx-auto max-w-6xl grid grid-cols-2 justify-items-center gap-4 md:grid-cols-4">
-          {communityMembers.map((member, index) => (
+          {members.map((member, index) => (
             <PolaroidCard
               key={member.id}
               member={member}
@@ -93,7 +82,7 @@ export function CommunitySection() {
 }
 
 interface PolaroidCardProps {
-  member: (typeof communityMembers)[0]
+  member: Member
   rotation: number
   onNameCardClick: (url: string) => void
 }
@@ -112,22 +101,24 @@ function PolaroidCard({ member, rotation, onNameCardClick }: PolaroidCardProps) 
       onMouseLeave={() => setHovered(false)}
       onClick={() => member.nameCard && onNameCardClick(member.nameCard)}
     >
-      {/* Polaroid frame */}
       <div className={`w-full bg-white p-2 pb-10 shadow-md transition-shadow duration-300 ${hovered ? "shadow-xl" : ""}`}>
-        {/* Photo */}
         <div className="relative aspect-square overflow-hidden">
-          <img
-            src={member.image}
-            alt={member.name}
-            className="h-full w-full object-cover"
-          />
-          {/* Name card icon */}
+          {member.image ? (
+            <img
+              src={member.image}
+              alt={member.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-muted text-3xl font-bold text-muted-foreground">
+              {member.name.charAt(0)}
+            </div>
+          )}
           {member.nameCard && (
             <CreditCard className="absolute top-2 right-2 h-5 w-5 text-white drop-shadow-md" />
           )}
         </div>
 
-        {/* Name in bottom white area */}
         <p className="mt-3 text-center text-sm font-semibold text-slate-700">
           {member.name}
         </p>

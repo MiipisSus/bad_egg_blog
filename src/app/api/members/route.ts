@@ -3,11 +3,28 @@ import { prisma } from "@/lib/db"
 import { writeFile, mkdir } from "fs/promises"
 import path from "path"
 
+const LEADER_ROLES = ["一郎", "二郎", "三郎"]
+const PRIORITY_ROLES = ["四郎", "五郎"]
+
 // GET /api/members
 export async function GET() {
-  const members = await prisma.member.findMany({
-    orderBy: { createdAt: "desc" },
-  })
+  const all = await prisma.member.findMany()
+
+  // Leaders: sorted by sortIndex
+  const leaders = all
+    .filter((m) => LEADER_ROLES.includes(m.role))
+    .sort((a, b) => a.sortIndex - b.sortIndex)
+
+  // Community: 四郎 first, then 五郎, then rest by ID asc
+  const community = all.filter((m) => !LEADER_ROLES.includes(m.role))
+  const priorityMembers = community
+    .filter((m) => PRIORITY_ROLES.includes(m.role))
+    .sort((a, b) => PRIORITY_ROLES.indexOf(a.role) - PRIORITY_ROLES.indexOf(b.role))
+  const regularMembers = community
+    .filter((m) => !PRIORITY_ROLES.includes(m.role))
+    .sort((a, b) => a.id - b.id)
+
+  const members = [...leaders, ...priorityMembers, ...regularMembers]
 
   return NextResponse.json({ members })
 }
