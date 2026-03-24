@@ -64,6 +64,79 @@ export function Guestbook() {
   const [hint, setHint] = useState<string | null>(null)
   const canvasRef = useRef<DrawingCanvasRef | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
+  const outlineCanvasRef = useRef<HTMLCanvasElement>(null)
+
+  // ─── Outline canvas RAF loop ───
+  useEffect(() => {
+    let rafId: number
+    const OUTLINE_WIDTH = 3
+
+    function drawOutline() {
+      const canvas = outlineCanvasRef.current
+      const board = boardRef.current
+      if (!canvas || !board) {
+        rafId = requestAnimationFrame(drawOutline)
+        return
+      }
+
+      const boardRect = board.getBoundingClientRect()
+      const dpr = window.devicePixelRatio || 1
+      const w = boardRect.width
+      const h = boardRect.height
+
+      // Resize canvas if needed
+      const targetW = Math.round(w * dpr)
+      const targetH = Math.round(h * dpr)
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW
+        canvas.height = targetH
+        canvas.style.width = `${w}px`
+        canvas.style.height = `${h}px`
+      }
+
+      const ctx = canvas.getContext("2d")!
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.clearRect(0, 0, w, h)
+
+      // Query all sticky note elements
+      const noteEls = board.querySelectorAll("[data-sticky-note]")
+      if (noteEls.length === 0) {
+        rafId = requestAnimationFrame(drawOutline)
+        return
+      }
+
+      // Pass 1: draw enlarged rects (union of all notes + outline width)
+      ctx.fillStyle = "#ffffff"
+      ctx.globalCompositeOperation = "source-over"
+      noteEls.forEach((el) => {
+        const r = el.getBoundingClientRect()
+        ctx.fillRect(
+          r.left - boardRect.left - OUTLINE_WIDTH,
+          r.top - boardRect.top - OUTLINE_WIDTH,
+          r.width + OUTLINE_WIDTH * 2,
+          r.height + OUTLINE_WIDTH * 2,
+        )
+      })
+
+      // Pass 2: cut out original note rects
+      ctx.globalCompositeOperation = "destination-out"
+      noteEls.forEach((el) => {
+        const r = el.getBoundingClientRect()
+        ctx.fillRect(
+          r.left - boardRect.left,
+          r.top - boardRect.top,
+          r.width,
+          r.height,
+        )
+      })
+
+      ctx.globalCompositeOperation = "source-over"
+      rafId = requestAnimationFrame(drawOutline)
+    }
+
+    rafId = requestAnimationFrame(drawOutline)
+    return () => cancelAnimationFrame(rafId)
+  }, [])
 
   // Fetch notes from API on mount
   useEffect(() => {
@@ -309,6 +382,9 @@ export function Guestbook() {
           boxShadow: "inset 0 0 80px rgba(0,0,0,0.5)",
         }}
       >
+        {/* Outline canvas — behind everything */}
+        <canvas ref={outlineCanvasRef} className="pointer-events-none absolute inset-0" />
+
         {/* Chalk dust lines */}
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.03]"
@@ -521,14 +597,12 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
       }}
     >
       <div
+        data-sticky-note
         className={`pointer-events-none relative h-56 w-56 p-3 shadow-2xl transition-shadow duration-200 ${
           isDragging ? "shadow-[0_20px_60px_rgba(0,0,0,0.4)]" : ""
         }`}
         style={{ backgroundColor: note.color }}
       >
-        {/* Tape effect */}
-        <div className="absolute -top-3 left-1/2 h-6 w-12 -translate-x-1/2 bg-white/30" />
-
         {/* Doodle content */}
         {note.image ? (
           <img
