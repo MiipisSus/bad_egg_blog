@@ -598,9 +598,7 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
     >
       <div
         data-sticky-note
-        className={`pointer-events-none relative h-56 w-56 p-3 shadow-2xl transition-shadow duration-200 ${
-          isDragging ? "shadow-[0_20px_60px_rgba(0,0,0,0.4)]" : ""
-        }`}
+        className="pointer-events-none relative h-64 w-64 p-3"
         style={{ backgroundColor: note.color }}
       >
         {/* Doodle content */}
@@ -697,7 +695,7 @@ function DrawingModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-10000 flex items-center justify-center"
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40" />
