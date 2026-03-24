@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import type { Member } from "@/types/member"
-import { Pencil, Trash2, Plus, X, Upload, GripVertical, CreditCard } from "lucide-react"
+import { Pencil, Trash2, Plus, X, Upload, GripVertical, CreditCard, Crop } from "lucide-react"
 import { ImageCropper } from "@/components/admin/image-cropper"
 import {
   DndContext,
@@ -384,7 +384,7 @@ export default function AdminMembersPage() {
                           onClick={() => { setCropField("image"); setCropSrc(imagePreview) }}
                           className="absolute inset-0 flex cursor-pointer items-center justify-center text-[10px] font-medium text-white opacity-0 transition-opacity duration-200 group-hover/img:opacity-100"
                         >
-                          裁切
+                          <Crop className="h-4 w-4" />
                         </button>
                       </div>
                     )}
@@ -412,7 +412,7 @@ export default function AdminMembersPage() {
                           onClick={() => { setCropField("nameCard"); setCropSrc(nameCardPreview) }}
                           className="absolute inset-0 flex cursor-pointer items-center justify-center text-[10px] font-medium text-white opacity-0 transition-opacity duration-200 group-hover/img:opacity-100"
                         >
-                          裁切
+                          <Crop className="h-4 w-4" />
                         </button>
                       </div>
                     )}

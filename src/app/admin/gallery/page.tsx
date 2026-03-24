@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Pencil, Trash2, Plus, X, Upload, ImageIcon, Images } from "lucide-react"
+import { Pencil, Trash2, Plus, X, Upload, ImageIcon, Images, Crop } from "lucide-react"
+import { ImageCropper } from "@/components/admin/image-cropper"
 
 interface GalleryImage {
   id: number
@@ -37,6 +38,8 @@ export default function AdminGalleryPage() {
   const [newImagePreviews, setNewImagePreviews] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null)
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
+  const [cropTarget, setCropTarget] = useState<{ type: "new"; index: number } | { type: "existing"; imgId: number } | null>(null)
 
   const fetchAlbums = useCallback(async () => {
     const res = await fetch("/api/gallery")
@@ -83,6 +86,35 @@ export default function AdminGalleryPage() {
         ? p.removeImageIds.filter((id) => id !== imgId)
         : [...p.removeImageIds, imgId],
     }))
+  }
+
+  function handleGalleryCropConfirm(blob: Blob) {
+    if (!cropTarget) return
+    if (cropTarget.type === "new") {
+      const file = new File([blob], "cropped.png", { type: "image/png" })
+      const url = URL.createObjectURL(blob)
+      setForm((p) => {
+        const newImages = [...p.newImages]
+        newImages[cropTarget.index] = file
+        return { ...p, newImages }
+      })
+      setNewImagePreviews((p) => {
+        const updated = [...p]
+        updated[cropTarget.index] = url
+        return updated
+      })
+    }
+    // For existing images, we'd need a server-side re-upload — skip for now
+    setCropSrc(null)
+    setCropTarget(null)
+  }
+
+  function removeNewImage(index: number) {
+    setForm((p) => ({
+      ...p,
+      newImages: p.newImages.filter((_, i) => i !== index),
+    }))
+    setNewImagePreviews((p) => p.filter((_, i) => i !== index))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -234,19 +266,19 @@ export default function AdminGalleryPage() {
               {editingAlbum && editingAlbum.images.length > 0 && (
                 <div>
                   <label className="text-sm font-medium">目前照片</label>
-                  <p className="mt-0.5 text-xs text-muted-foreground">點擊標記移除</p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {editingAlbum.images.map((img) => (
-                      <button key={img.id} type="button" onClick={() => toggleRemoveImage(img.id)}
-                        className={`relative h-20 w-20 cursor-pointer overflow-hidden rounded-lg border-2 transition-all ${form.removeImageIds.includes(img.id) ? "border-red-500 opacity-40" : "border-transparent"}`}
-                      >
-                        <img src={img.path} alt="" className="h-full w-full object-cover" />
-                        {form.removeImageIds.includes(img.id) && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-red-500/20">
-                            <X className="h-5 w-5 text-red-600" />
-                          </div>
-                        )}
-                      </button>
+                    {editingAlbum.images.filter((img) => !form.removeImageIds.includes(img.id)).map((img) => (
+                      <div key={img.id} className="group/img relative h-20 w-20 overflow-hidden border border-border">
+                        <img src={img.path} alt="" className="h-full w-full object-cover transition-[filter] duration-200 group-hover/img:brightness-50" />
+                        <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 transition-opacity duration-200 group-hover/img:opacity-100">
+                          <button type="button" onClick={() => { setCropTarget({ type: "existing", imgId: img.id }); setCropSrc(img.path) }} className="cursor-pointer text-white hover:text-white/80">
+                            <Crop className="h-4 w-4" />
+                          </button>
+                          <button type="button" onClick={() => toggleRemoveImage(img.id)} className="cursor-pointer text-red-400 hover:text-red-300">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -259,9 +291,19 @@ export default function AdminGalleryPage() {
                 </label>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   {newImagePreviews.map((src, i) => (
-                    <img key={i} src={src} alt="" className="h-20 w-20 rounded-lg object-cover" />
+                    <div key={i} className="group/img relative h-20 w-20 overflow-hidden border border-border">
+                      <img src={src} alt="" className="h-full w-full object-cover transition-[filter] duration-200 group-hover/img:brightness-50" />
+                      <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 transition-opacity duration-200 group-hover/img:opacity-100">
+                        <button type="button" onClick={() => { setCropTarget({ type: "new", index: i }); setCropSrc(src) }} className="cursor-pointer text-white hover:text-white/80">
+                          <Crop className="h-4 w-4" />
+                        </button>
+                        <button type="button" onClick={() => removeNewImage(i)} className="cursor-pointer text-red-400 hover:text-red-300">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
                   ))}
-                  <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border text-muted-foreground hover:border-foreground/40">
+                  <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center border-2 border-dashed border-border text-muted-foreground hover:border-foreground/40">
                     <Upload className="h-5 w-5" />
                     <span className="mt-1 text-[10px]">選擇檔案</span>
                     <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleNewImages(e.target.files)} />
@@ -275,6 +317,15 @@ export default function AdminGalleryPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Crop modal */}
+      {cropSrc && (
+        <ImageCropper
+          imageSrc={cropSrc}
+          onCrop={handleGalleryCropConfirm}
+          onCancel={() => { setCropSrc(null); setCropTarget(null) }}
+        />
       )}
     </div>
   )

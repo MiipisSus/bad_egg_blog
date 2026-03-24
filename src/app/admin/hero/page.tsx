@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Trash2, Plus, Upload, GripVertical, ImageIcon } from "lucide-react"
+import { Trash2, Plus, Upload, GripVertical, ImageIcon, Crop } from "lucide-react"
 import { ImageCropper } from "@/components/admin/image-cropper"
 import {
   DndContext,
@@ -224,7 +224,7 @@ function SortableBannerRow({ banner, index, onDelete, onRecrop }: { banner: Bann
           onClick={() => onRecrop(banner)}
           className="absolute inset-0 flex cursor-pointer items-center justify-center text-xs font-medium text-white opacity-0 transition-opacity duration-200 group-hover/img:opacity-100"
         >
-          裁切
+          <Crop className="h-4 w-4" />
         </button>
       </div>
 
