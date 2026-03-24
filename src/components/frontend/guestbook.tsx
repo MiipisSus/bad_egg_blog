@@ -87,7 +87,7 @@ export function Guestbook() {
           if (note.zIndex > zIndexCounter.current) zIndexCounter.current = note.zIndex
         }
 
-        const pageNums = Object.keys(pageMap).map(Number).sort((a, b) => a - b)
+        const pageNums = Object.keys(pageMap).map(Number).sort((a, b) => b - a)
         if (pageNums.length === 0) {
           setPages([[]])
           setPageIds([0])

@@ -71,6 +71,24 @@ export default function AdminGuestbookPage() {
         </div>
       )}
 
+      {/* Stats */}
+      <div className="mb-4 rounded-lg border bg-gray-50 p-4">
+        <div className="grid grid-cols-3 gap-4 text-center">
+          <div>
+            <div className="text-2xl font-bold">{notes.length}</div>
+            <div className="text-xs text-gray-500">總便利貼數</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold">{pageNumbers.length}</div>
+            <div className="text-xs text-gray-500">頁數</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold">{new Set(notes.map((n) => n.visitorId)).size}</div>
+            <div className="text-xs text-gray-500">訪客數</div>
+          </div>
+        </div>
+      </div>
+
       {/* Page switcher */}
       {totalPages > 1 && (
         <div className="mb-4 flex items-center gap-3">
@@ -158,24 +176,6 @@ export default function AdminGuestbookPage() {
         </div>
       )}
 
-      {/* Stats */}
-      <div className="mt-6 rounded-lg border bg-gray-50 p-4">
-        <h3 className="mb-2 text-sm font-medium text-gray-700">統計</h3>
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div>
-            <div className="text-2xl font-bold">{notes.length}</div>
-            <div className="text-xs text-gray-500">總便利貼數</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold">{pageNumbers.length}</div>
-            <div className="text-xs text-gray-500">頁數</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold">{new Set(notes.map((n) => n.visitorId)).size}</div>
-            <div className="text-xs text-gray-500">訪客數</div>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
