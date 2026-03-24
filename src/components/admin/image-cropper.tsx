@@ -52,16 +52,19 @@ export function ImageCropper({ imageSrc, defaultAspect, onCrop, onCancel }: Imag
       imgRef.current = img
       const { width, height } = img
 
-      // Set initial crop centered
+      // Set initial crop centered, aligned to shortest edge
       const aspect = locked ? defaultAspect : undefined
       if (aspect) {
+        // Fit to shortest edge: maximize crop within image bounds
         const imgAspect = width / height
         let cropW: number, cropH: number
         if (imgAspect > aspect) {
-          cropH = height * 0.85
+          // Image is wider than crop ratio → height is the limiting edge
+          cropH = height
           cropW = cropH * aspect
         } else {
-          cropW = width * 0.85
+          // Image is taller than crop ratio → width is the limiting edge
+          cropW = width
           cropH = cropW / aspect
         }
         setCrop({
@@ -72,13 +75,13 @@ export function ImageCropper({ imageSrc, defaultAspect, onCrop, onCancel }: Imag
           height: cropH,
         })
       } else {
-        const size = Math.min(width, height) * 0.85
+        // No aspect: crop = full image
         setCrop({
           unit: "px",
-          x: (width - size) / 2,
-          y: (height - size) / 2,
-          width: size,
-          height: size,
+          x: 0,
+          y: 0,
+          width,
+          height,
         })
       }
     },
