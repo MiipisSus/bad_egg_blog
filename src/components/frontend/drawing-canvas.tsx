@@ -18,12 +18,15 @@ interface DrawingCanvasProps {
   brushColor: string
   brushRadius: number
   backgroundColor: string
-  mode?: "draw" | "fill"  // "draw" = pen/eraser, "fill" = paint bucket
+  mode?: "draw" | "fill" | "text"
+  textSize?: number
+  textBold?: boolean
 }
 
 type Stroke =
   | { type: "draw"; points: { x: number; y: number }[]; color: string; radius: number }
   | { type: "fill"; x: number; y: number; color: string }
+  | { type: "text"; x: number; y: number; text: string; color: string; size: number; bold: boolean }
 
 const MAX_HISTORY = 10
 
@@ -145,11 +148,15 @@ function floodFill(ctx: CanvasRenderingContext2D, startX: number, startY: number
 
 // ─── Component ──────────────────────────────────────────────────────
 export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
-  function DrawingCanvas({ width, height, brushColor, brushRadius, backgroundColor, mode = "draw" }, ref) {
+  function DrawingCanvas({ width, height, brushColor, brushRadius, backgroundColor, mode = "draw", textSize = 24, textBold = false }, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
     const isDrawing = useRef(false)
     const lastOutsideClient = useRef<{ x: number; y: number } | null>(null)
+
+    // ── Text input state ──
+    const [textInput, setTextInput] = useState<{ x: number; y: number; value: string } | null>(null)
+    const textInputRef = useRef<HTMLInputElement>(null)
 
     // ── Cursor state ──
     const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
@@ -168,9 +175,36 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
     const brushColorRef = useRef(brushColor)
     const brushRadiusRef = useRef(brushRadius)
     const modeRef = useRef(mode)
+    const textSizeRef = useRef(textSize)
+    const textBoldRef = useRef(textBold)
     useEffect(() => { brushColorRef.current = brushColor }, [brushColor])
     useEffect(() => { brushRadiusRef.current = brushRadius }, [brushRadius])
     useEffect(() => { modeRef.current = mode }, [mode])
+    useEffect(() => { textSizeRef.current = textSize }, [textSize])
+    useEffect(() => { textBoldRef.current = textBold }, [textBold])
+
+    // Commit text — uses refs to avoid hook ordering issues
+    const commitStrokeRef = useRef<(s: Stroke) => void>(() => {})
+    const replayStrokeRef = useRef<(ctx: CanvasRenderingContext2D, s: Stroke) => void>(() => {})
+
+    const commitTextInput = useCallback(() => {
+      setTextInput((prev) => {
+        if (!prev || !prev.value.trim()) return null
+        const stroke: Stroke = {
+          type: "text",
+          x: prev.x,
+          y: prev.y,
+          text: prev.value,
+          color: brushColorRef.current,
+          size: textSizeRef.current,
+          bold: textBoldRef.current,
+        }
+        const ctx = canvasRef.current?.getContext("2d")
+        if (ctx) replayStrokeRef.current(ctx, stroke)
+        commitStrokeRef.current(stroke)
+        return null
+      })
+    }, [])
 
     const getCtx = useCallback(() => canvasRef.current?.getContext("2d") ?? null, [])
 
@@ -178,6 +212,14 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
     const replayStroke = useCallback((ctx: CanvasRenderingContext2D, stroke: Stroke) => {
       if (stroke.type === "fill") {
         floodFill(ctx, stroke.x, stroke.y, stroke.color, width, height)
+        return
+      }
+      if (stroke.type === "text") {
+        ctx.fillStyle = stroke.color
+        const huninn = getComputedStyle(document.documentElement).getPropertyValue("--font-huninn").trim() || "sans-serif"
+        ctx.font = `${stroke.bold ? "bold " : ""}${stroke.size}px ${huninn}`
+        ctx.textBaseline = "top"
+        ctx.fillText(stroke.text, stroke.x, stroke.y)
         return
       }
       // type === "draw"
@@ -281,6 +323,10 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       setCanRedo(false)
     }, [])
 
+    // Wire up refs for commitTextInput
+    commitStrokeRef.current = commitStroke
+    replayStrokeRef.current = replayStroke
+
     // ── Pointer down ──
     const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
       e.preventDefault()
@@ -289,11 +335,18 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
       if (!point) return
 
       if (modeRef.current === "fill") {
-        // Paint bucket: immediate flood fill
         const ctx = getCtx()
         if (!ctx) return
         floodFill(ctx, point.x, point.y, brushColorRef.current, width, height)
         commitStroke({ type: "fill", x: point.x, y: point.y, color: brushColorRef.current })
+        return
+      }
+
+      if (modeRef.current === "text") {
+        // Commit previous text input if any
+        commitTextInput()
+        setTextInput({ x: point.x, y: point.y, value: "" })
+        setTimeout(() => textInputRef.current?.focus(), 50)
         return
       }
 
@@ -474,10 +527,35 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
           style={{
             touchAction: "none",
             aspectRatio: `${width}/${height}`,
-            cursor: mode === "fill" ? "crosshair" : "none",
+            cursor: mode === "text" ? "text" : mode === "fill" ? "crosshair" : "none",
           }}
           onPointerDown={handlePointerDown}
         />
+
+        {/* Text input overlay */}
+        {textInput && (
+          <input
+            ref={textInputRef}
+            value={textInput.value}
+            onChange={(e) => setTextInput((prev) => prev ? { ...prev, value: e.target.value } : null)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { commitTextInput(); e.preventDefault() }
+              if (e.key === "Escape") setTextInput(null)
+            }}
+            onBlur={commitTextInput}
+            className="absolute border-none bg-transparent outline-none"
+            style={{
+              left: `${(textInput.x / width) * 100}%`,
+              top: `${(textInput.y / height) * 100}%`,
+              fontSize: `${textSize * (containerRef.current ? containerRef.current.getBoundingClientRect().width / width : 1)}px`,
+              fontWeight: textBold ? "bold" : "normal",
+              fontFamily: "var(--font-huninn), sans-serif",
+              color: brushColor,
+              minWidth: "40px",
+            }}
+          />
+        )}
+
         {/* Custom cursor circle for pen/eraser — double ring for visibility on any background */}
         {mode === "draw" && cursorPos && (
           <div

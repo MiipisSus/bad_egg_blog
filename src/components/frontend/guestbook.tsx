@@ -2,21 +2,96 @@
 
 import { useState, useRef, useCallback, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Plus, Eraser, Check, X, ChevronLeft, ChevronRight, Undo2, Redo2, Pipette, PaintBucket, Menu } from "lucide-react"
+import { Plus, Eraser, Check, X, ChevronLeft, ChevronRight, Undo2, Redo2, Pipette, PaintBucket, Menu, MessageCircle } from "lucide-react"
 import Link from "next/link"
 import { DrawingCanvas, type DrawingCanvasRef } from "./drawing-canvas"
 
 // ─── Types ──────────────────────────────────────────────────────────
+type NoteShape = "square" | "circle" | "heart"
+type NoteType = "drawing" | "bubble"
+
 interface StickyNote {
   id: number
-  image: string        // server image path or base64
+  image: string
   author: string
   color: string
   position: { x: number; y: number }
   zIndex: number
   page: number
+  shape: NoteShape
+  noteType: NoteType
+  text: string | null
   visitorId: string
   createdAt: number
+}
+
+// ─── Shape clip-paths ───────────────────────────────────────────────
+const SHAPE_CLIPS: Record<NoteShape, string | undefined> = {
+  square: undefined,
+  circle: "circle(50% at 50% 50%)",
+  heart: "url(#heart-clip)",
+}
+
+// Heart SVG path (from heart.svg 122.88x107.41, normalized to objectBoundingBox)
+const HEART_SVG_PATH = "M 0.4950,0.1600 C 0.5602,0.0823 0.6059,0.0151 0.7063,0.0020 C 0.8949,-0.0228 1.0683,0.1980 0.9731,0.4154 C 0.9460,0.4773 0.8908,0.5510 0.8298,0.6232 C 0.7628,0.7025 0.6886,0.7803 0.6367,0.8392 L 0.4951,0.9999 L 0.3781,0.8711 C 0.2373,0.7159 0.0077,0.5207 0.0002,0.2788 C -0.0051,0.1094 0.1117,0.0008 0.2462,0.0028 C 0.3663,0.0047 0.4168,0.0730 0.4950,0.1600 Z"
+
+// Heart path for canvas clipping (pixel coords, same normalized data)
+function heartPath(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  ctx.beginPath()
+  ctx.moveTo(0.4950*w, 0.1600*h)
+  ctx.bezierCurveTo(0.5602*w, 0.0823*h, 0.6059*w, 0.0151*h, 0.7063*w, 0.0020*h)
+  ctx.bezierCurveTo(0.8949*w, -0.0228*h, 1.0683*w, 0.1980*h, 0.9731*w, 0.4154*h)
+  ctx.bezierCurveTo(0.9460*w, 0.4773*h, 0.8908*w, 0.5510*h, 0.8298*w, 0.6232*h)
+  ctx.bezierCurveTo(0.7628*w, 0.7025*h, 0.6886*w, 0.7803*h, 0.6367*w, 0.8392*h)
+  ctx.lineTo(0.4951*w, 0.9999*h)
+  ctx.lineTo(0.3781*w, 0.8711*h)
+  ctx.bezierCurveTo(0.2373*w, 0.7159*h, 0.0077*w, 0.5207*h, 0.0002*w, 0.2788*h)
+  ctx.bezierCurveTo(-0.0051*w, 0.1094*h, 0.1117*w, 0.0008*h, 0.2462*w, 0.0028*h)
+  ctx.bezierCurveTo(0.3663*w, 0.0047*h, 0.4168*w, 0.0730*h, 0.4950*w, 0.1600*h)
+  ctx.closePath()
+}
+
+// Clip canvas output to shape, returns PNG blob
+async function applyShapeClip(dataUrl: string, shape: NoteShape): Promise<Blob> {
+  if (shape === "square") {
+    const res = await fetch(dataUrl)
+    return res.blob()
+  }
+
+  // Heart aspect ratio from SVG: 645:585
+  const HEART_RATIO = 645 / 585
+
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      const srcW = img.width
+      const srcH = img.height
+      // For heart: output is wider than tall
+      const outW = shape === "heart" ? srcW : srcW
+      const outH = shape === "heart" ? Math.round(srcW / HEART_RATIO) : srcH
+      const canvas = document.createElement("canvas")
+      canvas.width = outW
+      canvas.height = outH
+      const ctx = canvas.getContext("2d")!
+
+      // Apply clip path
+      ctx.save()
+      if (shape === "circle") {
+        ctx.beginPath()
+        ctx.arc(outW / 2, outH / 2, Math.min(outW, outH) / 2, 0, Math.PI * 2)
+        ctx.closePath()
+      } else if (shape === "heart") {
+        heartPath(ctx, outW, outH)
+      }
+      ctx.clip()
+      // Draw source centered/scaled to fit
+      ctx.drawImage(img, 0, 0, srcW, srcH, 0, 0, outW, outH)
+      ctx.restore()
+
+      canvas.toBlob((blob) => resolve(blob!), "image/png")
+    }
+    img.src = dataUrl
+  })
 }
 
 // ─── Visitor ID ─────────────────────────────────────────────────────
@@ -55,11 +130,15 @@ export function Guestbook() {
   const zIndexCounter = useRef(1)
   const [currentPage, setCurrentPage] = useState(0) // index into pages/pageIds arrays
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isBubbleModalOpen, setIsBubbleModalOpen] = useState(false)
+  const [bubbleText, setBubbleText] = useState("")
+  const [bubbleColor, setBubbleColor] = useState(STICKY_RAW_COLORS[1])
   const [authorName, setAuthorName] = useState(() => {
     if (typeof window === "undefined") return ""
     return localStorage.getItem("guestbook_author") || ""
   })
   const [selectedColor, setSelectedColor] = useState(STICKY_RAW_COLORS[0])
+  const [selectedShape, setSelectedShape] = useState<NoteShape>("square")
   const [draggedId, setDraggedId] = useState<number | null>(null)
   const [hint, setHint] = useState<string | null>(null)
   const canvasRef = useRef<DrawingCanvasRef | null>(null)
@@ -105,12 +184,51 @@ export function Guestbook() {
         return
       }
 
-      // Pass 1: draw enlarged rects (union of all notes + outline width)
+      // Helper: draw enlarged shape (for pass 1)
+      function drawEnlarged(el: Element, x: number, y: number, rw: number, rh: number) {
+        const shape = el.getAttribute("data-note-shape") || "square"
+        if (shape === "bubble") {
+          ctx.beginPath()
+          ctx.roundRect(x, y, rw, rh, [16, 16, 16, 0])
+          ctx.fill()
+        } else {
+          // square: simple rect
+          ctx.fillRect(x, y, rw, rh)
+        }
+      }
+
+      // Helper: cut out original shape (for pass 2)
+      function drawOriginal(el: Element, x: number, y: number, rw: number, rh: number) {
+        const shape = el.getAttribute("data-note-shape") || "square"
+        if (shape === "bubble") {
+          ctx.beginPath()
+          ctx.roundRect(x, y, rw, rh, [16, 16, 16, 0])
+          ctx.fill()
+        } else {
+          ctx.fillRect(x, y, rw, rh)
+        }
+      }
+
+      // ── Shapes that use enlarge+cutout (square, bubble) ──
+      const rectNotes: Element[] = []
+      const strokeNotes: Element[] = [] // circle, heart — use stroke instead
+
+      noteEls.forEach((el) => {
+        const shape = el.getAttribute("data-note-shape") || "square"
+        if (shape === "circle" || shape === "heart") {
+          strokeNotes.push(el)
+        } else {
+          rectNotes.push(el)
+        }
+      })
+
+      // Pass 1: draw enlarged rects
       ctx.fillStyle = "#ffffff"
       ctx.globalCompositeOperation = "source-over"
-      noteEls.forEach((el) => {
+      rectNotes.forEach((el) => {
         const r = el.getBoundingClientRect()
-        ctx.fillRect(
+        drawEnlarged(
+          el,
           r.left - boardRect.left - OUTLINE_WIDTH,
           r.top - boardRect.top - OUTLINE_WIDTH,
           r.width + OUTLINE_WIDTH * 2,
@@ -118,16 +236,39 @@ export function Guestbook() {
         )
       })
 
-      // Pass 2: cut out original note rects
+      // Pass 2: cut out original rects
       ctx.globalCompositeOperation = "destination-out"
-      noteEls.forEach((el) => {
+      rectNotes.forEach((el) => {
         const r = el.getBoundingClientRect()
-        ctx.fillRect(
+        drawOriginal(
+          el,
           r.left - boardRect.left,
           r.top - boardRect.top,
           r.width,
           r.height,
         )
+      })
+
+      // Pass 3: stroke-based outline for circle/heart (uniform thickness)
+      ctx.globalCompositeOperation = "source-over"
+      ctx.strokeStyle = "#ffffff"
+      ctx.lineWidth = OUTLINE_WIDTH * 2
+      strokeNotes.forEach((el) => {
+        const r = el.getBoundingClientRect()
+        const x = r.left - boardRect.left
+        const y = r.top - boardRect.top
+        const shape = el.getAttribute("data-note-shape")
+        if (shape === "circle") {
+          ctx.beginPath()
+          ctx.ellipse(x + r.width / 2, y + r.height / 2, r.width / 2, r.height / 2, 0, 0, Math.PI * 2)
+          ctx.stroke()
+        } else if (shape === "heart") {
+          ctx.save()
+          ctx.translate(x, y)
+          heartPath(ctx, r.width, r.height)
+          ctx.stroke()
+          ctx.restore()
+        }
       })
 
       ctx.globalCompositeOperation = "source-over"
@@ -151,6 +292,9 @@ export function Guestbook() {
           position: { x: n.posX as number, y: n.posY as number },
           zIndex: n.zIndex as number,
           page: n.page as number,
+          shape: (n.shape as NoteShape) || "square",
+          noteType: (n.noteType as NoteType) || "drawing",
+          text: (n.text as string) || null,
           visitorId: n.visitorId as string,
           createdAt: new Date(n.createdAt as string).getTime(),
         }))
@@ -203,9 +347,8 @@ export function Guestbook() {
 
     const dataUrl = canvasRef.current.getDataURL(selectedColor)
 
-    // Convert base64 to Blob for upload
-    const res = await fetch(dataUrl)
-    const blob = await res.blob()
+    // Apply shape clipping for non-square shapes
+    const blob = await applyShapeClip(dataUrl, selectedShape)
 
     zIndexCounter.current += 1
     const visitorId = getVisitorId()
@@ -218,6 +361,8 @@ export function Guestbook() {
     formData.append("page", String(pageIds[currentPage]))
     formData.append("author", authorName.trim())
     formData.append("color", selectedColor)
+    formData.append("shape", selectedShape)
+    formData.append("noteType", "drawing")
     formData.append("visitorId", visitorId)
 
     try {
@@ -234,6 +379,9 @@ export function Guestbook() {
         position: { x: note.posX, y: note.posY },
         zIndex: note.zIndex,
         page: note.page,
+        shape: note.shape || "square",
+        noteType: note.noteType || "drawing",
+        text: note.text || null,
         visitorId: note.visitorId,
         createdAt: new Date(note.createdAt).getTime(),
       }
@@ -251,7 +399,8 @@ export function Guestbook() {
     setIsModalOpen(false)
     if (authorName.trim()) localStorage.setItem("guestbook_author", authorName.trim())
     setSelectedColor(STICKY_RAW_COLORS[0])
-  }, [authorName, selectedColor, currentPage, pages])
+    setSelectedShape("square")
+  }, [authorName, selectedColor, selectedShape, currentPage, pages, pageIds])
 
   const handleDragEnd = useCallback((noteId: number, newX: number, newY: number) => {
     zIndexCounter.current += 1
@@ -282,6 +431,66 @@ export function Guestbook() {
   const handleClear = () => {
     canvasRef.current?.clear()
   }
+
+  const handleBubbleSave = useCallback(async () => {
+    if (!bubbleText.trim()) return
+
+    if (pages[currentPage].length >= PAGE_HARD_LIMIT) {
+      setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！")
+      setTimeout(() => setHint(null), 3000)
+      return
+    }
+
+    zIndexCounter.current += 1
+    const visitorId = getVisitorId()
+
+    const formData = new FormData()
+    formData.append("posX", "80")
+    formData.append("posY", "60")
+    formData.append("zIndex", String(zIndexCounter.current))
+    formData.append("page", String(pageIds[currentPage]))
+    formData.append("author", authorName.trim())
+    formData.append("color", bubbleColor)
+    formData.append("shape", "square")
+    formData.append("noteType", "bubble")
+    formData.append("text", bubbleText.trim())
+    formData.append("visitorId", visitorId)
+
+    try {
+      const apiRes = await fetch("/api/guestbook", { method: "POST", body: formData })
+      if (!apiRes.ok) throw new Error()
+      const data = await apiRes.json()
+      const note = data.note
+
+      const newNote: StickyNote = {
+        id: note.id,
+        image: "",
+        author: note.author || "",
+        color: note.color,
+        position: { x: note.posX, y: note.posY },
+        zIndex: note.zIndex,
+        page: note.page,
+        shape: "square",
+        noteType: "bubble",
+        text: note.text,
+        visitorId: note.visitorId,
+        createdAt: new Date(note.createdAt).getTime(),
+      }
+
+      setPages((prev) => {
+        const updated = [...prev]
+        updated[currentPage] = [...updated[currentPage], newNote]
+        return updated
+      })
+    } catch {
+      setHint("儲存失敗，請稍後再試")
+      setTimeout(() => setHint(null), 3000)
+    }
+
+    setIsBubbleModalOpen(false)
+    setBubbleText("")
+    if (authorName.trim()) localStorage.setItem("guestbook_author", authorName.trim())
+  }, [bubbleText, bubbleColor, authorName, currentPage, pages, pageIds])
 
   const [navOpen, setNavOpen] = useState(false)
 
@@ -371,6 +580,15 @@ export function Guestbook() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Heart clip-path definition */}
+      <svg className="absolute h-0 w-0" aria-hidden>
+        <defs>
+          <clipPath id="heart-clip" clipPathUnits="objectBoundingBox">
+            <path d={HEART_SVG_PATH} />
+          </clipPath>
+        </defs>
+      </svg>
 
       {/* ── Full-screen Blackboard ── */}
       <div
@@ -474,6 +692,21 @@ export function Guestbook() {
             <Plus className="h-4 w-4" />
             便利貼
           </button>
+
+          <button
+            onClick={() => {
+              if (pages[currentPage].length >= PAGE_HARD_LIMIT) {
+                setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！")
+                setTimeout(() => setHint(null), 3000)
+                return
+              }
+              setIsBubbleModalOpen(true)
+            }}
+            className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/30 px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <MessageCircle className="h-4 w-4" />
+            留言
+          </button>
         </div>
       </div>
 
@@ -484,12 +717,98 @@ export function Guestbook() {
             canvasRef={canvasRef}
             authorName={authorName}
             selectedColor={selectedColor}
+            selectedShape={selectedShape}
             onAuthorChange={setAuthorName}
             onColorChange={setSelectedColor}
+            onShapeChange={setSelectedShape}
             onClear={handleClear}
             onSave={handleSave}
             onClose={() => setIsModalOpen(false)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Bubble Modal */}
+      <AnimatePresence>
+        {isBubbleModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-10000 flex items-center justify-center"
+          >
+            <div className="absolute inset-0 bg-black/60" />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative z-10 w-80 rounded-2xl bg-white p-6 shadow-2xl"
+            >
+              <button
+                onClick={() => setIsBubbleModalOpen(false)}
+                className="absolute top-3 right-3 cursor-pointer text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              <h3 className="text-base font-semibold text-slate-800">留言氣泡</h3>
+
+              {/* Bubble color */}
+              <div className="mt-4 flex items-center gap-2">
+                <span className="text-xs text-slate-500">顏色：</span>
+                {STICKY_RAW_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => setBubbleColor(color)}
+                    className={`h-6 w-6 cursor-pointer rounded-full border-2 transition-transform ${
+                      bubbleColor === color ? "scale-110 border-slate-800" : "border-transparent hover:scale-105"
+                    }`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+
+              {/* Author */}
+              <input
+                type="text"
+                placeholder="你的名字（選填）"
+                value={authorName}
+                onChange={(e) => setAuthorName(e.target.value)}
+                className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+              />
+
+              {/* Message */}
+              <textarea
+                placeholder="寫下你想說的話..."
+                value={bubbleText}
+                onChange={(e) => setBubbleText(e.target.value)}
+                rows={3}
+                className="mt-2 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+                autoFocus
+              />
+
+              {/* Preview */}
+              <div className="mt-3 flex justify-center">
+                <div
+                  className="relative max-w-50 rounded-2xl rounded-bl-none px-4 py-3 text-sm text-slate-800 shadow-md"
+                  style={{ backgroundColor: bubbleColor }}
+                >
+                  {bubbleText || "預覽..."}
+                  {authorName && (
+                    <p className="mt-1 text-[10px] text-slate-500">— {authorName}</p>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={handleBubbleSave}
+                disabled={!bubbleText.trim()}
+                className="mt-4 w-full cursor-pointer rounded-lg bg-slate-800 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                送出
+              </button>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
@@ -596,31 +915,65 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
         touchAction: "none",
       }}
     >
-      <div
-        data-sticky-note
-        className="pointer-events-none relative h-64 w-64 p-3"
-        style={{ backgroundColor: note.color }}
-      >
-        {/* Doodle content */}
-        {note.image ? (
-          <img
-            src={note.image}
-            alt={`${note.author}'s doodle`}
-            className="absolute inset-0 h-full w-full object-cover"
-            draggable={false}
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <span className="text-2xl opacity-20">✏️</span>
+      {note.noteType === "bubble" ? (
+        /* ── Bubble note ── */
+        <div className="pointer-events-none max-w-64">
+          <div
+            data-sticky-note
+            data-note-shape="bubble"
+            className="relative rounded-2xl rounded-bl-none px-5 py-4 shadow-lg"
+            style={{ backgroundColor: note.color }}
+          >
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800" style={{ fontFamily: "var(--font-huninn)" }}>{note.text}</p>
+            {note.author && (
+              <p className="mt-2 text-[11px] text-slate-500">— {note.author}</p>
+            )}
           </div>
-        )}
-
-        {/* Info on hover */}
-        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/70 px-3 py-1 text-xs text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-          {note.author && <span>{note.author} · </span>}
-          {new Date(note.createdAt).toLocaleDateString("zh-TW", { year: "numeric", month: "2-digit", day: "2-digit" }).replace(/-/g, "/")}
+          {/* Info on hover */}
+          <div className="mt-2 whitespace-nowrap text-center text-xs text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            {new Date(note.createdAt).toLocaleDateString("zh-TW", { year: "numeric", month: "2-digit", day: "2-digit" }).replace(/-/g, "/")}
+          </div>
         </div>
-      </div>
+      ) : (
+        /* ── Drawing note ── */
+        <div
+          className="pointer-events-none relative"
+          style={{
+            width: note.shape === "heart" ? "18rem" : "16rem",
+            height: note.shape === "heart" ? "17rem" : "16rem",
+            filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.25))",
+          }}
+        >
+          <div
+            data-sticky-note
+            data-note-shape={note.shape}
+            className="relative h-full w-full overflow-hidden"
+            style={{
+              clipPath: SHAPE_CLIPS[note.shape] || undefined,
+              backgroundColor: note.color,
+            }}
+          >
+            {note.image ? (
+              <img
+                src={note.image}
+                alt={`${note.author}'s doodle`}
+                className="absolute inset-0 h-full w-full object-cover"
+                draggable={false}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <span className="text-2xl opacity-20">✏️</span>
+              </div>
+            )}
+          </div>
+
+          {/* Info on hover */}
+          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/70 px-3 py-1 text-xs text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            {note.author && <span>{note.author} · </span>}
+            {new Date(note.createdAt).toLocaleDateString("zh-TW", { year: "numeric", month: "2-digit", day: "2-digit" }).replace(/-/g, "/")}
+          </div>
+        </div>
+      )}
 
       {/* Right-click context menu — fixed to viewport */}
       {showContextMenu && (
@@ -663,28 +1016,40 @@ interface DrawingModalProps {
   canvasRef: React.MutableRefObject<DrawingCanvasRef | null>
   authorName: string
   selectedColor: string
+  selectedShape: NoteShape
   onAuthorChange: (name: string) => void
   onColorChange: (color: string) => void
+  onShapeChange: (shape: NoteShape) => void
   onClear: () => void
   onSave: () => void
   onClose: () => void
 }
 
+const SHAPE_OPTIONS: { value: NoteShape; label: string; icon: string }[] = [
+  { value: "square", label: "正方形", icon: "⬜" },
+  { value: "circle", label: "圓形", icon: "⭕" },
+  { value: "heart", label: "愛心", icon: "💗" },
+]
+
 function DrawingModal({
   canvasRef,
   authorName,
   selectedColor,
+  selectedShape,
   onAuthorChange,
   onColorChange,
+  onShapeChange,
   onClear,
   onSave,
   onClose,
 }: DrawingModalProps) {
   const [brushColor, setBrushColor] = useState(BRUSH_COLORS[0])
   const [customColor, setCustomColor] = useState("#ff6600")
-  const [activeTool, setActiveTool] = useState<"pen" | "eraser" | "fill">("pen")
+  const [activeTool, setActiveTool] = useState<"pen" | "eraser" | "fill" | "text">("pen")
   const [penSize, setPenSize] = useState(2)
   const [eraserSize, setEraserSize] = useState(12)
+  const [textSize, setTextSize] = useState(24)
+  const [textBold, setTextBold] = useState(false)
 
   // Undo/redo is handled inside DrawingCanvas, we just read state from ref
   const canUndo = canvasRef.current?.canUndo ?? false
@@ -743,6 +1108,23 @@ function DrawingModal({
             </div>
           </div>
 
+          {/* Shape selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-white/60">形狀：</span>
+            {SHAPE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => onShapeChange(opt.value)}
+                className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded text-lg transition-transform ${
+                  selectedShape === opt.value ? "scale-110 bg-white/20" : "hover:scale-105 hover:bg-white/10"
+                }`}
+                title={opt.label}
+              >
+                {opt.icon}
+              </button>
+            ))}
+          </div>
+
           {/* Author name input */}
           <input
             type="text"
@@ -754,6 +1136,7 @@ function DrawingModal({
 
           {/* Canvas */}
           <div className="overflow-hidden shadow-2xl">
+            <div style={{ clipPath: SHAPE_CLIPS[selectedShape] }}>
             <DrawingCanvas
               ref={canvasRef}
               width={550}
@@ -761,8 +1144,11 @@ function DrawingModal({
               brushRadius={activeTool === "eraser" ? eraserSize : penSize}
               brushColor={activeTool === "eraser" ? selectedColor : brushColor}
               backgroundColor={selectedColor}
-              mode={activeTool === "fill" ? "fill" : "draw"}
+              mode={activeTool === "text" ? "text" : activeTool === "fill" ? "fill" : "draw"}
+              textSize={textSize}
+              textBold={textBold}
             />
+            </div>
           </div>
         </div>
 
@@ -809,13 +1195,44 @@ function DrawingModal({
             >
               <PaintBucket className="h-5 w-5" />
             </button>
+            <button
+              onClick={() => setActiveTool("text")}
+              className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-full shadow-lg transition-all ${
+                activeTool === "text" ? "bg-white text-slate-800 scale-110" : "bg-white/60 text-slate-500 hover:bg-white/80"
+              }`}
+              title="文字"
+            >
+              <span className="text-base font-bold">T</span>
+            </button>
           </div>
 
-          {/* Size presets (invisible for fill tool to preserve width) */}
-          <div className={`flex items-center gap-2 ${activeTool === "fill" ? "invisible" : ""}`}>
-            {(activeTool === "pen" ? PEN_SIZES : ERASER_SIZES).map((size) => {
-              const currentSize = activeTool === "pen" ? penSize : eraserSize
-              const setSize = activeTool === "pen" ? setPenSize : setEraserSize
+          {/* Size presets for pen/eraser, text controls for text tool */}
+          {activeTool === "text" ? (
+            <div className="flex items-center gap-2">
+              <select
+                value={textSize}
+                onChange={(e) => setTextSize(Number(e.target.value))}
+                className="h-8 cursor-pointer rounded bg-white/30 px-2 text-xs text-white outline-none"
+              >
+                {[16, 20, 24, 32, 40, 48, 64].map((s) => (
+                  <option key={s} value={s} className="text-black">{s}px</option>
+                ))}
+              </select>
+              <button
+                onClick={() => setTextBold((v) => !v)}
+                className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded text-sm font-bold transition-all ${
+                  textBold ? "bg-white text-slate-800" : "bg-white/30 text-white hover:bg-white/50"
+                }`}
+                title="粗體"
+              >
+                B
+              </button>
+            </div>
+          ) : (
+            <div className={`flex items-center gap-2 ${activeTool === "fill" ? "invisible" : ""}`}>
+              {(activeTool === "pen" ? PEN_SIZES : ERASER_SIZES).map((size) => {
+                const currentSize = activeTool === "pen" ? penSize : eraserSize
+                const setSize = activeTool === "pen" ? setPenSize : setEraserSize
               const dotSize = Math.max(6, Math.min(size * 2, 24))
               return (
                 <button
@@ -834,6 +1251,7 @@ function DrawingModal({
               )
             })}
           </div>
+          )}
 
           {/* Color grid - BRUSH_COLORS_COLS per row */}
           <div

@@ -74,6 +74,9 @@ model StickyNote {
   page      Int      @default(0)
   author    String?
   color     String   @default("#ffffff")
+  shape     String   @default("square") // "square" | "circle" | "heart"
+  noteType  String   @default("drawing") // "drawing" | "bubble"
+  text      String?  // for bubble notes
   visitorId String   // unique visitor fingerprint
   ipAddress String?
   createdAt DateTime @default(now())

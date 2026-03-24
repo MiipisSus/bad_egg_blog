@@ -23,17 +23,23 @@ export async function POST(request: NextRequest) {
     const page = parseInt(formData.get("page") as string) || 0
     const author = (formData.get("author") as string) || null
     const color = (formData.get("color") as string) || "#ffffff"
+    const shape = (formData.get("shape") as string) || "square"
+    const noteType = (formData.get("noteType") as string) || "drawing"
+    const text = (formData.get("text") as string) || null
     const visitorId = formData.get("visitorId") as string
 
     if (!visitorId) {
       return NextResponse.json({ error: "visitorId is required" }, { status: 400 })
     }
-    if (!imageFile || imageFile.size === 0) {
-      return NextResponse.json({ error: "image is required" }, { status: 400 })
-    }
 
-    // Save transparent PNG
-    const imagePath = await saveFile(imageFile, "guestbook")
+    // Bubble notes don't require an image
+    let imagePath: string | null = null
+    if (noteType === "drawing") {
+      if (!imageFile || imageFile.size === 0) {
+        return NextResponse.json({ error: "image is required" }, { status: 400 })
+      }
+      imagePath = await saveFile(imageFile, "guestbook")
+    }
 
     // Get IP address
     const forwarded = request.headers.get("x-forwarded-for")
@@ -41,13 +47,16 @@ export async function POST(request: NextRequest) {
 
     const note = await prisma.stickyNote.create({
       data: {
-        image: imagePath,
+        image: imagePath || "",
         posX,
         posY,
         zIndex,
         page,
         author: author || null,
         color,
+        shape,
+        noteType,
+        text,
         visitorId,
         ipAddress,
       },
@@ -56,7 +65,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ note, message: "Note created" }, { status: 201 })
   } catch (error) {
     console.error("Failed to create sticky note:", error)
-    return NextResponse.json({ error: "Failed to create sticky note" }, { status: 500 })
+    const msg = error instanceof Error ? error.message : "Failed to create sticky note"
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
 
