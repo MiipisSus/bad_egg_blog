@@ -82,7 +82,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             href="/admin/activities"
             className={`text-sm transition-colors ${pathname === "/admin/activities" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
           >
-            活動
+            社團特色
           </a>
           <a
             href="/admin/members"

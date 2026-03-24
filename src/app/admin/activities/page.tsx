@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Pencil, Trash2, Plus, X, Upload, GripVertical, ImageIcon } from "lucide-react"
+import { Pencil, Trash2, Plus, X, Upload, GripVertical, ImageIcon, Crop } from "lucide-react"
+import { ImageCropper } from "@/components/admin/image-cropper"
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent,
 } from "@dnd-kit/core"
@@ -35,6 +36,7 @@ export default function AdminActivitiesPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null)
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -109,12 +111,17 @@ export default function AdminActivitiesPage() {
   }
 
   function handleFileChange(file: File | null) {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (e) => setCropSrc(e.target?.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  function handleCropConfirm(blob: Blob) {
+    const file = new File([blob], "cropped.png", { type: "image/png" })
     setForm((p) => ({ ...p, image: file }))
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => setImagePreview(e.target?.result as string)
-      reader.readAsDataURL(file)
-    }
+    setImagePreview(URL.createObjectURL(blob))
+    setCropSrc(null)
   }
 
   return (
@@ -127,8 +134,8 @@ export default function AdminActivitiesPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">活動管理</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{items.length} 個活動 — 拖曳以重新排序</p>
+          <h1 className="text-2xl font-bold">社團特色</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{items.length} 個特色 — 拖曳以重新排序</p>
         </div>
         <button onClick={openCreate} className="flex cursor-pointer items-center gap-2 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-foreground/90">
           <Plus className="h-4 w-4" /> 新增
@@ -140,7 +147,7 @@ export default function AdminActivitiesPage() {
       ) : items.length === 0 ? (
         <div className="mt-8 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border py-16">
           <ImageIcon className="h-12 w-12 text-muted-foreground/40" />
-          <p className="mt-3 text-sm text-muted-foreground">尚無活動。</p>
+          <p className="mt-3 text-sm text-muted-foreground">尚無社團特色。</p>
         </div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -174,7 +181,7 @@ export default function AdminActivitiesPage() {
             <button onClick={() => setShowModal(false)} className="absolute right-4 top-4 cursor-pointer text-muted-foreground hover:text-foreground">
               <X className="h-5 w-5" />
             </button>
-            <h2 className="text-lg font-bold">{editingId ? "編輯活動" : "新增活動"}</h2>
+            <h2 className="text-lg font-bold">{editingId ? "編輯特色" : "新增特色"}</h2>
 
             <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
               <div>
@@ -198,14 +205,26 @@ export default function AdminActivitiesPage() {
               </div>
 
               <div>
-                <label className="text-sm font-medium">Image {editingId ? "" : "*"}</label>
+                <label className="text-sm font-medium">圖片 {editingId ? "" : "*"}</label>
                 <div className="mt-1 flex items-center gap-3">
-                  {imagePreview && <img src={imagePreview} alt="" className="h-16 w-24 rounded-lg object-cover" />}
+                  {imagePreview && (
+                    <div className="group/img relative h-16 w-24 overflow-hidden border border-border">
+                      <img src={imagePreview} alt="" className="h-full w-full object-cover transition-[filter] duration-200 group-hover/img:brightness-50" />
+                      <button
+                        type="button"
+                        onClick={() => setCropSrc(imagePreview)}
+                        className="absolute inset-0 flex cursor-pointer items-center justify-center text-white opacity-0 transition-opacity duration-200 group-hover/img:opacity-100"
+                      >
+                        <Crop className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
                   <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 py-2 text-sm text-muted-foreground hover:border-foreground/40">
                     <Upload className="h-4 w-4" /> 選擇檔案
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e.target.files?.[0] || null)} />
                   </label>
                 </div>
+                <p className="mt-1 text-xs text-muted-foreground">建議圖片比例 4:3（如 1200×900），橫式顯示效果最佳。</p>
               </div>
 
               <button type="submit" disabled={saving} className="mt-2 cursor-pointer rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50">
@@ -214,6 +233,16 @@ export default function AdminActivitiesPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Crop modal */}
+      {cropSrc && (
+        <ImageCropper
+          imageSrc={cropSrc}
+          defaultAspect={4 / 3}
+          onCrop={handleCropConfirm}
+          onCancel={() => setCropSrc(null)}
+        />
       )}
     </div>
   )

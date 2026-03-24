@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Pencil, Trash2, Plus, X, Upload, GripVertical, ImageIcon } from "lucide-react"
+import { Pencil, Trash2, Plus, X, Upload, GripVertical, ImageIcon, Crop } from "lucide-react"
+import { ImageCropper } from "@/components/admin/image-cropper"
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent,
 } from "@dnd-kit/core"
@@ -35,6 +36,7 @@ export default function AdminTimelinePage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null)
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -116,12 +118,17 @@ export default function AdminTimelinePage() {
   }
 
   function handleFileChange(file: File | null) {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (e) => setCropSrc(e.target?.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  function handleCropConfirm(blob: Blob) {
+    const file = new File([blob], "cropped.png", { type: "image/png" })
     setForm((p) => ({ ...p, image: file }))
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => setImagePreview(e.target?.result as string)
-      reader.readAsDataURL(file)
-    }
+    setImagePreview(URL.createObjectURL(blob))
+    setCropSrc(null)
   }
 
   return (
@@ -230,9 +237,20 @@ export default function AdminTimelinePage() {
               </div>
 
               <div>
-                <label className="text-sm font-medium">Image (optional)</label>
+                <label className="text-sm font-medium">圖片（選填）</label>
                 <div className="mt-1 flex items-center gap-3">
-                  {imagePreview && <img src={imagePreview} alt="" className="h-16 w-20 rounded-lg object-cover" />}
+                  {imagePreview && (
+                    <div className="group/img relative h-16 w-20 overflow-hidden border border-border">
+                      <img src={imagePreview} alt="" className="h-full w-full object-cover transition-[filter] duration-200 group-hover/img:brightness-50" />
+                      <button
+                        type="button"
+                        onClick={() => setCropSrc(imagePreview)}
+                        className="absolute inset-0 flex cursor-pointer items-center justify-center text-white opacity-0 transition-opacity duration-200 group-hover/img:opacity-100"
+                      >
+                        <Crop className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
                   <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 py-2 text-sm text-muted-foreground hover:border-foreground/40">
                     <Upload className="h-4 w-4" /> 選擇檔案
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e.target.files?.[0] || null)} />
@@ -246,6 +264,15 @@ export default function AdminTimelinePage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Crop modal — no default aspect for timeline */}
+      {cropSrc && (
+        <ImageCropper
+          imageSrc={cropSrc}
+          onCrop={handleCropConfirm}
+          onCancel={() => setCropSrc(null)}
+        />
       )}
     </div>
   )
