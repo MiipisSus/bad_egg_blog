@@ -135,6 +135,7 @@ export default function AdminHeroPage() {
           />
         </label>
       </div>
+      <p className="mt-2 text-xs text-muted-foreground">建議圖片比例 3:2（如 1920×1280），橫式全幅顯示效果最佳。</p>
 
       {/* Banner List */}
       {loading ? (

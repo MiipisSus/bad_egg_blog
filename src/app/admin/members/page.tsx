@@ -372,6 +372,11 @@ export default function AdminMembersPage() {
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange("image", e.target.files?.[0] || null)} />
                     </label>
                   </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {LEADER_ROLES.includes(form.role)
+                      ? "建議圖片比例 16:9（如 1600×900），橫式顯示效果最佳。"
+                      : "建議圖片比例 1:1（如 800×800），正方形顯示效果最佳。"}
+                  </p>
                 </div>
 
                 <div>
@@ -405,7 +410,7 @@ export default function AdminMembersPage() {
                 <div className="relative h-64 w-48 overflow-hidden bg-white p-1.5 shadow-md" style={{ transform: "rotate(-2deg)" }}>
                   <div className="relative h-full w-full overflow-hidden">
                     {imagePreview ? (
-                      <img src={imagePreview} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                      <img src={imagePreview} alt="" className="absolute inset-0 h-full w-full object-cover object-left" />
                     ) : (
                       <div className="absolute inset-0 bg-muted" />
                     )}
