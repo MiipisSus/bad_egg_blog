@@ -67,22 +67,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             儀表板
           </a>
           <a
-            href="/admin/members"
-            className={`text-sm transition-colors ${pathname === "/admin/members" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
-          >
-            成員
-          </a>
-          <a
             href="/admin/hero"
             className={`text-sm transition-colors ${pathname === "/admin/hero" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
           >
             首頁橫幅
           </a>
           <a
-            href="/admin/gallery"
-            className={`text-sm transition-colors ${pathname === "/admin/gallery" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
+            href="/admin/timeline"
+            className={`text-sm transition-colors ${pathname === "/admin/timeline" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
           >
-            畫廊
+            時間線
           </a>
           <a
             href="/admin/activities"
@@ -91,10 +85,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             活動
           </a>
           <a
-            href="/admin/timeline"
-            className={`text-sm transition-colors ${pathname === "/admin/timeline" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
+            href="/admin/members"
+            className={`text-sm transition-colors ${pathname === "/admin/members" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
           >
-            時間線
+            成員
+          </a>
+          
+          <a
+            href="/admin/gallery"
+            className={`text-sm transition-colors ${pathname === "/admin/gallery" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
+          >
+            畫廊
           </a>
           <a
             href="/admin/guestbook"

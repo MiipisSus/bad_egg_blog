@@ -56,10 +56,12 @@ export function LeadershipSection({ members }: LeadershipSectionProps) {
             >
               <div className="relative h-full w-full overflow-hidden">
                 {leader.image ? (
-                  <img
+                  <motion.img
                     src={leader.image}
                     alt={leader.name}
                     className="absolute inset-0 h-full w-full object-cover"
+                    animate={{ objectPosition: isHovered ? "center" : "left" }}
+                    transition={{ duration: 0.4, ease: "easeInOut" }}
                   />
                 ) : (
                   <div className="absolute inset-0 bg-muted" />
