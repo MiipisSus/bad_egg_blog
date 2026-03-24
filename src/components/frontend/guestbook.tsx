@@ -739,8 +739,8 @@ function DrawingModal({
             </button>
           </div>
 
-          {/* Size presets (hidden for fill tool) */}
-          {activeTool !== "fill" && <div className="flex items-center gap-2">
+          {/* Size presets (invisible for fill tool to preserve width) */}
+          <div className={`flex items-center gap-2 ${activeTool === "fill" ? "invisible" : ""}`}>
             {(activeTool === "pen" ? PEN_SIZES : ERASER_SIZES).map((size) => {
               const currentSize = activeTool === "pen" ? penSize : eraserSize
               const setSize = activeTool === "pen" ? setPenSize : setEraserSize
@@ -761,7 +761,7 @@ function DrawingModal({
                 </button>
               )
             })}
-          </div>}
+          </div>
 
           {/* Color grid - BRUSH_COLORS_COLS per row */}
           <div

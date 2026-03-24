@@ -478,15 +478,16 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
           }}
           onPointerDown={handlePointerDown}
         />
-        {/* Custom cursor circle for pen/eraser */}
+        {/* Custom cursor circle for pen/eraser — double ring for visibility on any background */}
         {mode === "draw" && cursorPos && (
           <div
-            className="pointer-events-none absolute rounded-full border border-slate-400/60"
+            className="pointer-events-none absolute rounded-full"
             style={{
               width: cursorDisplaySize,
               height: cursorDisplaySize,
               left: cursorPos.x - cursorDisplaySize / 2,
               top: cursorPos.y - cursorDisplaySize / 2,
+              boxShadow: "0 0 0 1px rgba(255,255,255,0.8), 0 0 0 2px rgba(0,0,0,0.5)",
             }}
           />
         )}
