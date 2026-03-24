@@ -58,7 +58,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}
     >
       <aside className="flex w-64 flex-col border-r border-border bg-sidebar p-6">
-        <h2 className="text-lg font-bold text-sidebar-foreground">Admin</h2>
+        <h2 className="text-lg font-bold text-sidebar-foreground">Greetings, <br></br> {username}</h2>
         <nav className="mt-6 flex flex-1 flex-col gap-2">
           <a
             href="/admin"
