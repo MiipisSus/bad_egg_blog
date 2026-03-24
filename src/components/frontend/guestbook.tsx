@@ -9,12 +9,28 @@ import { DrawingCanvas, type DrawingCanvasRef } from "./drawing-canvas"
 // ─── Types ──────────────────────────────────────────────────────────
 interface StickyNote {
   id: number
-  imageData: string
+  image: string        // server image path or base64
   author: string
   color: string
   position: { x: number; y: number }
   zIndex: number
+  page: number
+  visitorId: string
   createdAt: number
+}
+
+// ─── Visitor ID ─────────────────────────────────────────────────────
+function getVisitorId(): string {
+  if (typeof window === "undefined") return ""
+  let id = localStorage.getItem("guestbook_visitor_id")
+  if (!id) {
+    id = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0
+      return (c === "x" ? r : (r & 0x3) | 0x8).toString(16)
+    })
+    localStorage.setItem("guestbook_visitor_id", id)
+  }
+  return id
 }
 
 // ─── Constants ──────────────────────────────────────────────────────
@@ -32,12 +48,12 @@ const STICKY_RAW_COLORS = [
 
 // ─── Main Component ─────────────────────────────────────────────────
 export function Guestbook() {
-  // Pages: index 0 = newest page, last index = oldest page
-  // Display order: oldest (last) -> newest (first), so visually page 1 = pages[pages.length-1]
+  // Each page has a stable numeric ID stored in DB
   const [pages, setPages] = useState<StickyNote[][]>([[]])
-  const [myNoteIds, setMyNoteIds] = useState<Set<number>>(new Set())
+  const [pageIds, setPageIds] = useState<number[]>([0]) // stable page IDs matching pages array
+  const pageIdCounter = useRef(0)
   const zIndexCounter = useRef(1)
-  const [currentPage, setCurrentPage] = useState(0) // visual index: 0 = oldest
+  const [currentPage, setCurrentPage] = useState(0) // index into pages/pageIds arrays
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [authorName, setAuthorName] = useState("")
   const [selectedColor, setSelectedColor] = useState(STICKY_RAW_COLORS[0])
@@ -45,6 +61,45 @@ export function Guestbook() {
   const [hint, setHint] = useState<string | null>(null)
   const canvasRef = useRef<DrawingCanvasRef | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
+
+  // Fetch notes from API on mount
+  useEffect(() => {
+    fetch("/api/guestbook")
+      .then((res) => res.json())
+      .then((data) => {
+        const apiNotes: StickyNote[] = (data.notes || []).map((n: Record<string, unknown>) => ({
+          id: n.id as number,
+          image: n.image as string,
+          author: (n.author as string) || "",
+          color: (n.color as string) || "#ffffff",
+          position: { x: n.posX as number, y: n.posY as number },
+          zIndex: n.zIndex as number,
+          page: n.page as number,
+          visitorId: n.visitorId as string,
+          createdAt: new Date(n.createdAt as string).getTime(),
+        }))
+
+        // Group by page number
+        const pageMap: Record<number, StickyNote[]> = {}
+        for (const note of apiNotes) {
+          if (!pageMap[note.page]) pageMap[note.page] = []
+          pageMap[note.page].push(note)
+          if (note.zIndex > zIndexCounter.current) zIndexCounter.current = note.zIndex
+        }
+
+        const pageNums = Object.keys(pageMap).map(Number).sort((a, b) => a - b)
+        if (pageNums.length === 0) {
+          setPages([[]])
+          setPageIds([0])
+          pageIdCounter.current = 0
+        } else {
+          setPages(pageNums.map((p) => pageMap[p]))
+          setPageIds(pageNums)
+          pageIdCounter.current = Math.max(...pageNums)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   // pages[0] = newest, pages[last] = oldest. Dots: left = newest, right = oldest.
   const totalPages = pages.length
@@ -54,11 +109,14 @@ export function Guestbook() {
   const canAddPage = pages[0].length >= PAGE_SOFT_LIMIT
 
   const handleAddPage = useCallback(() => {
+    pageIdCounter.current += 1
+    const newPageId = pageIdCounter.current
     setPages((prev) => [[], ...prev])
+    setPageIds((prev) => [newPageId, ...prev])
     setCurrentPage(0) // navigate to new page (index 0)
   }, [])
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!canvasRef.current) return
 
     if (pages[currentPage].length >= PAGE_HARD_LIMIT) {
@@ -67,27 +125,53 @@ export function Guestbook() {
       return
     }
 
-    const imageData = canvasRef.current.getDataURL(selectedColor)
+    const dataUrl = canvasRef.current.getDataURL(selectedColor)
+
+    // Convert base64 to Blob for upload
+    const res = await fetch(dataUrl)
+    const blob = await res.blob()
 
     zIndexCounter.current += 1
-    const now = Date.now()
-    const newNote: StickyNote = {
-      id: now,
-      imageData,
-      author: authorName.trim(),
-      color: selectedColor,
-      position: { x: 80, y: 60 },
-      zIndex: zIndexCounter.current,
-      createdAt: now,
+    const visitorId = getVisitorId()
+
+    const formData = new FormData()
+    formData.append("image", blob, "sticker.png")
+    formData.append("posX", "80")
+    formData.append("posY", "60")
+    formData.append("zIndex", String(zIndexCounter.current))
+    formData.append("page", String(pageIds[currentPage]))
+    formData.append("author", authorName.trim())
+    formData.append("color", selectedColor)
+    formData.append("visitorId", visitorId)
+
+    try {
+      const apiRes = await fetch("/api/guestbook", { method: "POST", body: formData })
+      if (!apiRes.ok) throw new Error()
+      const data = await apiRes.json()
+      const note = data.note
+
+      const newNote: StickyNote = {
+        id: note.id,
+        image: note.image,
+        author: note.author || "",
+        color: note.color,
+        position: { x: note.posX, y: note.posY },
+        zIndex: note.zIndex,
+        page: note.page,
+        visitorId: note.visitorId,
+        createdAt: new Date(note.createdAt).getTime(),
+      }
+
+      setPages((prev) => {
+        const updated = [...prev]
+        updated[currentPage] = [...updated[currentPage], newNote]
+        return updated
+      })
+    } catch {
+      setHint("儲存失敗，請稍後再試")
+      setTimeout(() => setHint(null), 3000)
     }
 
-    // API: POST /api/guestbook
-    setMyNoteIds((prev) => new Set(prev).add(newNote.id))
-    setPages((prev) => {
-      const updated = [...prev]
-      updated[currentPage] = [...updated[currentPage], newNote]
-      return updated
-    })
     setIsModalOpen(false)
     setAuthorName("")
     setSelectedColor(STICKY_RAW_COLORS[0])
@@ -102,19 +186,21 @@ export function Guestbook() {
       )
     )
     setDraggedId(null)
-    // API: PATCH /api/guestbook/:id { position: { x: newX, y: newY } }
+    fetch(`/api/guestbook/${noteId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ posX: newX, posY: newY, zIndex: newZ }),
+    }).catch(() => {})
   }, [])
 
   const handleDelete = useCallback((noteId: number) => {
+    const visitorId = getVisitorId()
     setPages((prev) =>
       prev.map((page) => page.filter((n) => n.id !== noteId))
     )
-    setMyNoteIds((prev) => {
-      const next = new Set(prev)
-      next.delete(noteId)
-      return next
-    })
-    // API: DELETE /api/guestbook/:id
+    fetch(`/api/guestbook/${noteId}?visitorId=${visitorId}`, {
+      method: "DELETE",
+    }).catch(() => {})
   }, [])
 
   const handleClear = () => {
@@ -244,7 +330,7 @@ export function Guestbook() {
                 note={note}
                 index={index}
                 boardRef={boardRef}
-                isOwned={myNoteIds.has(note.id)}
+                isOwned={note.visitorId === getVisitorId()}
                 isDragging={draggedId === note.id}
                 onDragStart={() => setDraggedId(note.id)}
                 onDragEnd={handleDragEnd}
@@ -441,9 +527,9 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
         <div className="absolute -top-3 left-1/2 h-6 w-12 -translate-x-1/2 bg-white/30" />
 
         {/* Doodle content */}
-        {note.imageData ? (
+        {note.image ? (
           <img
-            src={note.imageData}
+            src={note.image}
             alt={`${note.author}'s doodle`}
             className="absolute inset-0 h-full w-full object-cover"
             draggable={false}

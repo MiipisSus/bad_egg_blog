@@ -96,6 +96,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             Timeline
           </a>
+          <a
+            href="/admin/guestbook"
+            className={`text-sm transition-colors ${pathname === "/admin/guestbook" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
+          >
+            Guestbook
+          </a>
         </nav>
 
         {/* Bottom: user & logout */}

@@ -65,6 +65,20 @@ model HeroBanner {
   createdAt DateTime @default(now())
 }
 
+model StickyNote {
+  id        Int      @id @default(autoincrement())
+  image     String   // transparent PNG path
+  posX      Float    @default(80)
+  posY      Float    @default(60)
+  zIndex    Int      @default(1)
+  page      Int      @default(0)
+  author    String?
+  color     String   @default("#ffffff")
+  visitorId String   // unique visitor fingerprint
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
 model Admin {
   id       Int    @id @default(autoincrement())
   username String @unique
