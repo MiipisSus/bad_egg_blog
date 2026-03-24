@@ -118,7 +118,7 @@ export default function AdminGalleryPage() {
     const res = await fetch(`/api/gallery/${id}`, { method: "DELETE" })
     const data = await res.json()
     if (res.ok) { setMessage({ text: data.message, type: "success" }); fetchAlbums() }
-    else setMessage({ text: data.error || "Delete failed", type: "error" })
+    else setMessage({ text: data.error || "刪除失敗", type: "error" })
   }
 
   return (
@@ -131,31 +131,31 @@ export default function AdminGalleryPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Gallery</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{albums.length} albums</p>
+          <h1 className="text-2xl font-bold">畫廊管理</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{albums.length} 相簿</p>
         </div>
         <button onClick={openCreate} className="flex cursor-pointer items-center gap-2 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-foreground/90">
-          <Plus className="h-4 w-4" /> Add Album
+          <Plus className="h-4 w-4" /> 新增
         </button>
       </div>
 
       {loading ? (
-        <p className="mt-8 text-muted-foreground">Loading...</p>
+        <p className="mt-8 text-muted-foreground">載入中...</p>
       ) : albums.length === 0 ? (
         <div className="mt-8 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border py-16">
           <ImageIcon className="h-12 w-12 text-muted-foreground/40" />
-          <p className="mt-3 text-sm text-muted-foreground">No albums yet.</p>
+          <p className="mt-3 text-sm text-muted-foreground">尚無相簿。</p>
         </div>
       ) : (
         <div className="mt-6 overflow-hidden rounded-lg border border-border">
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-muted/50">
               <tr>
-                <th className="px-4 py-3 text-left font-medium">Thumbnail</th>
-                <th className="px-4 py-3 text-left font-medium">Title</th>
-                <th className="px-4 py-3 text-left font-medium">Photos</th>
-                <th className="px-4 py-3 text-left font-medium">Date</th>
-                <th className="px-4 py-3 text-right font-medium">Actions</th>
+                <th className="px-4 py-3 text-left font-medium">縮圖</th>
+                <th className="px-4 py-3 text-left font-medium">標題</th>
+                <th className="px-4 py-3 text-left font-medium">張照片</th>
+                <th className="px-4 py-3 text-left font-medium">日期</th>
+                <th className="px-4 py-3 text-right font-medium">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -201,26 +201,26 @@ export default function AdminGalleryPage() {
             <button onClick={() => setShowModal(false)} className="absolute right-4 top-4 cursor-pointer text-muted-foreground hover:text-foreground">
               <X className="h-5 w-5" />
             </button>
-            <h2 className="text-lg font-bold">{editingAlbum ? "Edit Album" : "New Album"}</h2>
+            <h2 className="text-lg font-bold">{editingAlbum ? "編輯相簿" : "新增相簿"}</h2>
 
             <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
               <div>
-                <label className="text-sm font-medium">Title *</label>
+                <label className="text-sm font-medium">標題 *</label>
                 <input required value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-foreground/20" />
               </div>
 
               <div>
-                <label className="text-sm font-medium">Description</label>
+                <label className="text-sm font-medium">內文</label>
                 <textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} rows={2} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-foreground/20" />
               </div>
 
               <div>
-                <label className="text-sm font-medium">Date</label>
+                <label className="text-sm font-medium">日期</label>
                 <div className="mt-1 flex gap-1.5">
                   {[
-                    { label: "Today", value: new Date().toISOString().slice(0, 10) },
-                    { label: "Yesterday", value: new Date(Date.now() - 86400000).toISOString().slice(0, 10) },
-                    { label: "This Month", value: new Date().toISOString().slice(0, 7) },
+                    { label: "今天", value: new Date().toISOString().slice(0, 10) },
+                    { label: "昨天", value: new Date(Date.now() - 86400000).toISOString().slice(0, 10) },
+                    { label: "本月", value: new Date().toISOString().slice(0, 7) },
                   ].map((btn) => (
                     <button key={btn.label} type="button" onClick={() => setForm((p) => ({ ...p, date: btn.value }))}
                       className={`cursor-pointer rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${form.date === btn.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground"}`}
@@ -233,8 +233,8 @@ export default function AdminGalleryPage() {
               {/* Existing images (edit mode) */}
               {editingAlbum && editingAlbum.images.length > 0 && (
                 <div>
-                  <label className="text-sm font-medium">Current Images</label>
-                  <p className="mt-0.5 text-xs text-muted-foreground">Click to mark for removal</p>
+                  <label className="text-sm font-medium">目前照片</label>
+                  <p className="mt-0.5 text-xs text-muted-foreground">點擊標記移除</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {editingAlbum.images.map((img) => (
                       <button key={img.id} type="button" onClick={() => toggleRemoveImage(img.id)}
@@ -255,7 +255,7 @@ export default function AdminGalleryPage() {
               {/* New images */}
               <div>
                 <label className="text-sm font-medium">
-                  {editingAlbum ? "Add More Images" : "Images *"}
+                  {editingAlbum ? "新增更多照片" : "照片 *"}
                 </label>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   {newImagePreviews.map((src, i) => (
@@ -263,14 +263,14 @@ export default function AdminGalleryPage() {
                   ))}
                   <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border text-muted-foreground hover:border-foreground/40">
                     <Upload className="h-5 w-5" />
-                    <span className="mt-1 text-[10px]">Upload</span>
+                    <span className="mt-1 text-[10px]">選擇檔案</span>
                     <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleNewImages(e.target.files)} />
                   </label>
                 </div>
               </div>
 
               <button type="submit" disabled={saving} className="mt-2 cursor-pointer rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50">
-                {saving ? "Saving..." : editingAlbum ? "Update Album" : "Create Album"}
+                {saving ? "儲存中..." : editingAlbum ? "更新" : "建立"}
               </button>
             </form>
           </div>

@@ -63,7 +63,7 @@ export default function AdminHeroPage() {
       setMessage({ text: data.message, type: "success" })
       fetchBanners()
     } else {
-      setMessage({ text: data.error || "Upload failed", type: "error" })
+      setMessage({ text: data.error || "上傳失敗", type: "error" })
     }
   }
 
@@ -77,7 +77,7 @@ export default function AdminHeroPage() {
       setMessage({ text: data.message, type: "success" })
       fetchBanners()
     } else {
-      setMessage({ text: data.error || "Delete failed", type: "error" })
+      setMessage({ text: data.error || "刪除失敗", type: "error" })
     }
   }
 
@@ -98,7 +98,7 @@ export default function AdminHeroPage() {
     })
 
     if (res.ok) {
-      setMessage({ text: "Sort order saved", type: "success" })
+      setMessage({ text: "排序已儲存", type: "success" })
     } else {
       setMessage({ text: "Failed to save sort order", type: "error" })
       fetchBanners()
@@ -117,12 +117,12 @@ export default function AdminHeroPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Hero Banners</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{banners.length} banners — drag to reorder</p>
+          <h1 className="text-2xl font-bold">首頁橫幅</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{banners.length} 張橫幅 — 拖曳以重新排序</p>
         </div>
         <label className={`flex cursor-pointer items-center gap-2 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-foreground/90 ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
           <Plus className="h-4 w-4" />
-          {uploading ? "Uploading..." : "Add Banner"}
+          {uploading ? "上傳中..." : "新增"}
           <input
             type="file"
             accept="image/*"
@@ -138,11 +138,11 @@ export default function AdminHeroPage() {
 
       {/* Banner List */}
       {loading ? (
-        <p className="mt-8 text-muted-foreground">Loading...</p>
+        <p className="mt-8 text-muted-foreground">載入中...</p>
       ) : banners.length === 0 ? (
         <div className="mt-8 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border py-16">
           <ImageIcon className="h-12 w-12 text-muted-foreground/40" />
-          <p className="mt-3 text-sm text-muted-foreground">No banners yet. Upload one to get started.</p>
+          <p className="mt-3 text-sm text-muted-foreground">尚無橫幅，請上傳一張。</p>
         </div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

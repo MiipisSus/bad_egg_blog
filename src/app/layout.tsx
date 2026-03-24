@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans, Caveat } from 'next/font/google'
+import localFont from 'next/font/local'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
@@ -11,6 +12,11 @@ const plusJakarta = Plus_Jakarta_Sans({
 const caveat = Caveat({
   subsets: ["latin"],
   variable: '--font-handwriting',
+});
+
+const openHuninn = localFont({
+  src: '../../public/assets/fonts/jf-openhuninn-2.1.ttf',
+  variable: '--font-huninn',
 });
 
 export const metadata: Metadata = {
@@ -43,7 +49,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${plusJakarta.variable} ${caveat.variable} font-sans antialiased`}>
+      <body className={`${plusJakarta.variable} ${caveat.variable} ${openHuninn.variable} font-sans antialiased`}>
         {children}
         <Analytics />
       </body>

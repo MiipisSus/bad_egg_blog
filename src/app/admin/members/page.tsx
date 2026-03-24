@@ -114,7 +114,7 @@ export default function AdminMembersPage() {
     })
 
     if (res.ok) {
-      setMessage({ text: "Sort order saved", type: "success" })
+      setMessage({ text: "排序已儲存", type: "success" })
     } else {
       setMessage({ text: "Failed to save sort order", type: "error" })
       fetchMembers() // rollback
@@ -180,7 +180,7 @@ export default function AdminMembersPage() {
       setMessage({ text: data.message, type: "success" })
       fetchMembers()
     } else {
-      setMessage({ text: data.error || "Delete failed", type: "error" })
+      setMessage({ text: data.error || "刪除失敗", type: "error" })
     }
   }
 
@@ -207,15 +207,15 @@ export default function AdminMembersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Members</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{members.length} members total</p>
+          <h1 className="text-2xl font-bold">成員管理</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{members.length} 位成員</p>
         </div>
         <button
           onClick={openCreate}
           className="flex cursor-pointer items-center gap-2 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-foreground/90"
         >
           <Plus className="h-4 w-4" />
-          Add Member
+          新增
         </button>
       </div>
 
@@ -246,7 +246,7 @@ export default function AdminMembersPage() {
 
       {/* Content */}
       {loading ? (
-        <p className="mt-8 text-muted-foreground">Loading...</p>
+        <p className="mt-8 text-muted-foreground">載入中...</p>
       ) : tab === "leaders" ? (
         /* Leaders tab: drag-and-drop */
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -256,15 +256,15 @@ export default function AdminMembersPage() {
                 <thead className="border-b border-border bg-muted/50">
                   <tr>
                     <th className="w-10 px-2 py-3" />
-                    <th className="px-4 py-3 text-left font-medium">Image</th>
-                    <th className="px-4 py-3 text-left font-medium">Name</th>
-                    <th className="px-4 py-3 text-left font-medium">Role</th>
-                    <th className="px-4 py-3 text-right font-medium">Actions</th>
+                    <th className="px-4 py-3 text-left font-medium">圖片</th>
+                    <th className="px-4 py-3 text-left font-medium">遊戲 ID</th>
+                    <th className="px-4 py-3 text-left font-medium">職位</th>
+                    <th className="px-4 py-3 text-right font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {leaders.length === 0 ? (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No leaders yet.</td></tr>
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">尚無成員。</td></tr>
                   ) : (
                     leaders.map((member) => (
                       <SortableRow key={member.id} member={member} onEdit={openEdit} onDelete={handleDelete} />
@@ -274,7 +274,7 @@ export default function AdminMembersPage() {
               </table>
             </div>
           </SortableContext>
-          <p className="mt-2 text-xs text-muted-foreground">Drag rows to reorder leaders. Changes save automatically.</p>
+          <p className="mt-2 text-xs text-muted-foreground">拖曳列以重新排序幹部，變更將自動儲存。</p>
         </DndContext>
       ) : (
         /* All / Community tab: static table */
@@ -282,15 +282,15 @@ export default function AdminMembersPage() {
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-muted/50">
               <tr>
-                <th className="px-4 py-3 text-left font-medium">Image</th>
-                <th className="px-4 py-3 text-left font-medium">Name</th>
-                <th className="px-4 py-3 text-left font-medium">Role</th>
-                <th className="px-4 py-3 text-right font-medium">Actions</th>
+                <th className="px-4 py-3 text-left font-medium">圖片</th>
+                <th className="px-4 py-3 text-left font-medium">遊戲 ID</th>
+                <th className="px-4 py-3 text-left font-medium">階級</th>
+                <th className="px-4 py-3 text-right font-medium">操作</th>
               </tr>
             </thead>
             <tbody>
               {displayMembers.length === 0 ? (
-                <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">No members.</td></tr>
+                <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">尚無成員。</td></tr>
               ) : (
                 displayMembers.map((member) => (
                   <tr key={member.id} className="border-b border-border last:border-0">
@@ -325,11 +325,11 @@ export default function AdminMembersPage() {
                 <X className="h-5 w-5" />
               </button>
 
-              <h2 className="text-lg font-bold">{editingId ? "Edit Member" : "Add Member"}</h2>
+              <h2 className="text-lg font-bold">{editingId ? "編輯成員" : "新增成員"}</h2>
 
               <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
                 <div>
-                  <label className="text-sm font-medium">Name *</label>
+                  <label className="text-sm font-medium">遊戲 ID *</label>
                   <input
                     required
                     value={form.name}
@@ -339,7 +339,7 @@ export default function AdminMembersPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium">Role *</label>
+                  <label className="text-sm font-medium">職位 *</label>
                   <select
                     required
                     value={form.role}
@@ -353,7 +353,7 @@ export default function AdminMembersPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium">Bio</label>
+                  <label className="text-sm font-medium">簡介</label>
                   <textarea
                     value={form.bio}
                     onChange={(e) => setForm((p) => ({ ...p, bio: e.target.value }))}
@@ -368,7 +368,7 @@ export default function AdminMembersPage() {
                     {imagePreview && <img src={imagePreview} alt="" className="h-16 w-16 rounded-lg object-cover" />}
                     <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 py-2 text-sm text-muted-foreground hover:border-foreground/40">
                       <Upload className="h-4 w-4" />
-                      Choose file
+                      選擇檔案
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange("image", e.target.files?.[0] || null)} />
                     </label>
                   </div>
@@ -380,7 +380,7 @@ export default function AdminMembersPage() {
                     {nameCardPreview && <img src={nameCardPreview} alt="" className="h-16 w-24 rounded-lg object-cover" />}
                     <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 py-2 text-sm text-muted-foreground hover:border-foreground/40">
                       <Upload className="h-4 w-4" />
-                      Choose file
+                      選擇檔案
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange("nameCard", e.target.files?.[0] || null)} />
                     </label>
                   </div>
@@ -391,7 +391,7 @@ export default function AdminMembersPage() {
                   disabled={saving}
                   className="mt-2 cursor-pointer rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
                 >
-                  {saving ? "Saving..." : editingId ? "Update Member" : "Create Member"}
+                  {saving ? "儲存中..." : editingId ? "更新" : "建立"}
                 </button>
               </form>
             </div>

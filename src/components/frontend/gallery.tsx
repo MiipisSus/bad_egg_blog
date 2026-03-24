@@ -384,7 +384,7 @@ function GalleryCard({
         {/* Title & Date - centered in bottom white area */}
         <div className="mt-3 text-center">
           <p className="text-sm font-semibold text-slate-800">
-            {photo.category}
+            {photo.albumTitle}
           </p>
           <p className="mt-1 text-xs text-slate-400">
             {format(new Date(photo.date), "yyyy / MM / dd")}
@@ -510,7 +510,7 @@ function GalleryModal({
               onClick={(e) => e.stopPropagation()}
             >
               {/* Entire polaroid frame as one animated unit */}
-              <div className="h-full w-full bg-white p-3 pb-14 shadow-[0_12px_40px_rgb(0,0,0,0.3)]">
+              <div className="relative h-full w-full bg-white p-3 pb-14 shadow-[0_12px_40px_rgb(0,0,0,0.3)]">
                 <div className="relative h-full w-full overflow-hidden">
                   <Image
                     src={photo.images[currentIndex] || photo.images[0]}
@@ -529,11 +529,16 @@ function GalleryModal({
                     >
                       {photo.albumTitle}
                     </p>
-                    <p className="mt-0.5 text-md text-white/70">
+                    <p className="mt-0.5 text-md text-white/70" style={{ fontFamily: "var(--font-huninn)" }}>
                       {photo.description}
                     </p>
                   </div>
                 </div>
+
+                {/* Date - centered in bottom white area */}
+                <p className="absolute bottom-0 left-0 right-0 pb-5 text-center text-xs text-slate-400">
+                  {format(new Date(photo.date), "yyyy / MM / dd")}
+                </p>
               </div>
             </motion.div>
           </AnimatePresence>

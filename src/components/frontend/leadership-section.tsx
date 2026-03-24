@@ -119,7 +119,7 @@ export function LeadershipSection({ members }: LeadershipSectionProps) {
                     </h3>
 
                     {leader.bio && (
-                      <p className="mt-4 text-sm font-bold leading-relaxed text-white/90">
+                      <p className="mt-4 text-sm font-bold leading-relaxed text-white/90" style={{ fontFamily: "var(--font-huninn)" }}>
                         {leader.bio}
                       </p>
                     )}

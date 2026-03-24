@@ -151,7 +151,7 @@ export function Activities() {
                   <h3 className="text-lg font-semibold text-foreground md:text-2xl">
                     {activeActivity.title}
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground md:mt-3 md:text-base">
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground md:mt-3 md:text-base" style={{ fontFamily: "var(--font-huninn)" }}>
                     {activeActivity.description}
                   </p>
                   

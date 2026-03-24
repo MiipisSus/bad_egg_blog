@@ -88,7 +88,7 @@ export default function AdminActivitiesPage() {
     const res = await fetch(`/api/activities/${id}`, { method: "DELETE" })
     const data = await res.json()
     if (res.ok) { setMessage({ text: data.message, type: "success" }); fetchItems() }
-    else setMessage({ text: data.error || "Delete failed", type: "error" })
+    else setMessage({ text: data.error || "刪除失敗", type: "error" })
   }
 
   async function handleDragEnd(event: DragEndEvent) {
@@ -104,7 +104,7 @@ export default function AdminActivitiesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids: reordered.map((i) => i.id) }),
     })
-    if (res.ok) setMessage({ text: "Sort order saved", type: "success" })
+    if (res.ok) setMessage({ text: "排序已儲存", type: "success" })
     else { setMessage({ text: "Failed to save sort order", type: "error" }); fetchItems() }
   }
 
@@ -127,20 +127,20 @@ export default function AdminActivitiesPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Activities</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{items.length} activities — drag to reorder</p>
+          <h1 className="text-2xl font-bold">活動管理</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{items.length} 個活動 — 拖曳以重新排序</p>
         </div>
         <button onClick={openCreate} className="flex cursor-pointer items-center gap-2 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-foreground/90">
-          <Plus className="h-4 w-4" /> Add Activity
+          <Plus className="h-4 w-4" /> 新增
         </button>
       </div>
 
       {loading ? (
-        <p className="mt-8 text-muted-foreground">Loading...</p>
+        <p className="mt-8 text-muted-foreground">載入中...</p>
       ) : items.length === 0 ? (
         <div className="mt-8 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border py-16">
           <ImageIcon className="h-12 w-12 text-muted-foreground/40" />
-          <p className="mt-3 text-sm text-muted-foreground">No activities yet.</p>
+          <p className="mt-3 text-sm text-muted-foreground">尚無活動。</p>
         </div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -151,10 +151,10 @@ export default function AdminActivitiesPage() {
                   <tr>
                     <th className="w-10 px-2 py-3" />
                     <th className="w-8 px-2 py-3 text-center font-medium">#</th>
-                    <th className="px-4 py-3 text-left font-medium">Image</th>
-                    <th className="px-4 py-3 text-left font-medium">Title</th>
-                    <th className="px-4 py-3 text-left font-medium">Description</th>
-                    <th className="px-4 py-3 text-right font-medium">Actions</th>
+                    <th className="px-4 py-3 text-left font-medium">圖片</th>
+                    <th className="px-4 py-3 text-left font-medium">標題</th>
+                    <th className="px-4 py-3 text-left font-medium">內文</th>
+                    <th className="px-4 py-3 text-right font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -174,11 +174,11 @@ export default function AdminActivitiesPage() {
             <button onClick={() => setShowModal(false)} className="absolute right-4 top-4 cursor-pointer text-muted-foreground hover:text-foreground">
               <X className="h-5 w-5" />
             </button>
-            <h2 className="text-lg font-bold">{editingId ? "Edit Activity" : "Add Activity"}</h2>
+            <h2 className="text-lg font-bold">{editingId ? "編輯活動" : "新增活動"}</h2>
 
             <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
               <div>
-                <label className="text-sm font-medium">Title *</label>
+                <label className="text-sm font-medium">標題 *</label>
                 <input
                   required
                   value={form.title}
@@ -188,7 +188,7 @@ export default function AdminActivitiesPage() {
               </div>
 
               <div>
-                <label className="text-sm font-medium">Description</label>
+                <label className="text-sm font-medium">內文</label>
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
@@ -202,14 +202,14 @@ export default function AdminActivitiesPage() {
                 <div className="mt-1 flex items-center gap-3">
                   {imagePreview && <img src={imagePreview} alt="" className="h-16 w-24 rounded-lg object-cover" />}
                   <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 py-2 text-sm text-muted-foreground hover:border-foreground/40">
-                    <Upload className="h-4 w-4" /> Choose file
+                    <Upload className="h-4 w-4" /> 選擇檔案
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e.target.files?.[0] || null)} />
                   </label>
                 </div>
               </div>
 
               <button type="submit" disabled={saving} className="mt-2 cursor-pointer rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50">
-                {saving ? "Saving..." : editingId ? "Update" : "Create"}
+                {saving ? "儲存中..." : editingId ? "更新" : "建立"}
               </button>
             </form>
           </div>

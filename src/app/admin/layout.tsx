@@ -47,7 +47,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         className="flex min-h-screen items-center justify-center"
         style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}
       >
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">載入中...</p>
       </div>
     )
   }
@@ -59,48 +59,48 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     >
       <aside className="flex w-64 flex-col border-r border-border bg-sidebar p-6">
         <h2 className="text-lg font-bold text-sidebar-foreground">Greetings, <br></br> {username}</h2>
-        <nav className="mt-6 flex flex-1 flex-col gap-2">
+        <nav className="mt-6 flex flex-1 flex-col gap-4">
           <a
             href="/admin"
             className={`text-sm transition-colors ${pathname === "/admin" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
           >
-            Dashboard
+            儀表板
           </a>
           <a
             href="/admin/members"
             className={`text-sm transition-colors ${pathname === "/admin/members" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
           >
-            Members
+            成員
           </a>
           <a
             href="/admin/hero"
             className={`text-sm transition-colors ${pathname === "/admin/hero" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
           >
-            Hero Banners
+            首頁橫幅
           </a>
           <a
             href="/admin/gallery"
             className={`text-sm transition-colors ${pathname === "/admin/gallery" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
           >
-            Gallery
+            畫廊
           </a>
           <a
             href="/admin/activities"
             className={`text-sm transition-colors ${pathname === "/admin/activities" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
           >
-            Activities
+            活動
           </a>
           <a
             href="/admin/timeline"
             className={`text-sm transition-colors ${pathname === "/admin/timeline" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
           >
-            Timeline
+            時間線
           </a>
           <a
             href="/admin/guestbook"
             className={`text-sm transition-colors ${pathname === "/admin/guestbook" ? "font-medium text-sidebar-foreground" : "text-sidebar-foreground/70 hover:text-sidebar-foreground"}`}
           >
-            Guestbook
+            簽到簿
           </a>
         </nav>
 
@@ -111,7 +111,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <button
               onClick={handleLogout}
               className="cursor-pointer text-sidebar-foreground/50 transition-colors hover:text-red-500"
-              title="Logout"
+              title="登出"
             >
               <LogOut className="h-4 w-4" />
             </button>

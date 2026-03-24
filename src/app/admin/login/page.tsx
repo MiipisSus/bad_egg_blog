@@ -28,7 +28,7 @@ export default function AdminLoginPage() {
       router.push("/admin")
       router.refresh()
     } else {
-      setError(data.error || "Login failed")
+      setError(data.error || "帳號或密碼錯誤")
     }
   }
 
@@ -38,8 +38,8 @@ export default function AdminLoginPage() {
       style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}
     >
       <div className="w-full max-w-sm rounded-xl bg-background p-8 shadow-lg">
-        <h1 className="text-center text-xl font-bold">Admin Login</h1>
-        <p className="mt-1 text-center text-sm text-muted-foreground">Sign in to manage your site</p>
+        <h1 className="text-center text-xl font-bold">管理員登入</h1>
+        <p className="mt-1 text-center text-sm text-muted-foreground">登入以管理您的網站</p>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           {error && (
@@ -49,7 +49,7 @@ export default function AdminLoginPage() {
           )}
 
           <div>
-            <label className="text-sm font-medium">Username</label>
+            <label className="text-sm font-medium">帳號</label>
             <input
               required
               value={username}
@@ -60,7 +60,7 @@ export default function AdminLoginPage() {
           </div>
 
           <div>
-            <label className="text-sm font-medium">Password</label>
+            <label className="text-sm font-medium">密碼</label>
             <input
               required
               type="password"
@@ -75,7 +75,7 @@ export default function AdminLoginPage() {
             disabled={loading}
             className="mt-2 cursor-pointer rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "載入中..." : "登入"}
           </button>
         </form>
       </div>
