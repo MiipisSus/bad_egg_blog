@@ -34,8 +34,8 @@ function getVisitorId(): string {
 }
 
 // ─── Constants ──────────────────────────────────────────────────────
-const PAGE_SOFT_LIMIT = 1  // "追加畫布" becomes available after this
-const PAGE_HARD_LIMIT = 1  // absolute max per page
+const PAGE_SOFT_LIMIT = 10  // "追加畫布" becomes available after this
+const PAGE_HARD_LIMIT = 15  // absolute max per page
 
 const STICKY_RAW_COLORS = [
   "#ffffff",
@@ -55,7 +55,10 @@ export function Guestbook() {
   const zIndexCounter = useRef(1)
   const [currentPage, setCurrentPage] = useState(0) // index into pages/pageIds arrays
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [authorName, setAuthorName] = useState("")
+  const [authorName, setAuthorName] = useState(() => {
+    if (typeof window === "undefined") return ""
+    return localStorage.getItem("guestbook_author") || ""
+  })
   const [selectedColor, setSelectedColor] = useState(STICKY_RAW_COLORS[0])
   const [draggedId, setDraggedId] = useState<number | null>(null)
   const [hint, setHint] = useState<string | null>(null)
@@ -173,7 +176,7 @@ export function Guestbook() {
     }
 
     setIsModalOpen(false)
-    setAuthorName("")
+    if (authorName.trim()) localStorage.setItem("guestbook_author", authorName.trim())
     setSelectedColor(STICKY_RAW_COLORS[0])
   }, [authorName, selectedColor, currentPage, pages])
 
