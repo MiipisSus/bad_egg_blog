@@ -105,6 +105,18 @@ export function Guestbook() {
     // API: PATCH /api/guestbook/:id { position: { x: newX, y: newY } }
   }, [])
 
+  const handleDelete = useCallback((noteId: number) => {
+    setPages((prev) =>
+      prev.map((page) => page.filter((n) => n.id !== noteId))
+    )
+    setMyNoteIds((prev) => {
+      const next = new Set(prev)
+      next.delete(noteId)
+      return next
+    })
+    // API: DELETE /api/guestbook/:id
+  }, [])
+
   const handleClear = () => {
     canvasRef.current?.clear()
   }
@@ -124,9 +136,9 @@ export function Guestbook() {
       {/* ── Menu icon (top-right) ── */}
       <button
         onClick={() => setNavOpen((v) => !v)}
-        className="fixed top-4 right-4 z-60 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-colors hover:bg-white/25"
+        className="fixed top-4 right-4 z-60 flex h-10 w-10 cursor-pointer items-center justify-center text-white backdrop-blur-md"
       >
-        <Menu className="h-5 w-5" />
+        <Menu className="h-6 w-6 transition-all duration-200 hover:size-7" />
       </button>
 
       {/* ── Full-height sidebar nav (slides from right) ── */}
@@ -154,9 +166,9 @@ export function Guestbook() {
               <div className="flex justify-end p-4">
                 <button
                   onClick={() => setNavOpen(false)}
-                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-white/60"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-6 w-6 transition-all duration-200 hover:size-7" />
                 </button>
               </div>
 
@@ -236,6 +248,7 @@ export function Guestbook() {
                 isDragging={draggedId === note.id}
                 onDragStart={() => setDraggedId(note.id)}
                 onDragEnd={handleDragEnd}
+                onDelete={handleDelete}
               />
             ))}
           </motion.div>
@@ -327,11 +340,14 @@ interface DraggableStickyNoteProps {
   isDragging: boolean
   onDragStart: () => void
   onDragEnd: (id: number, x: number, y: number) => void
+  onDelete: (id: number) => void
 }
 
-function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDragStart, onDragEnd }: DraggableStickyNoteProps) {
+function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDragStart, onDragEnd, onDelete }: DraggableStickyNoteProps) {
   const elRef = useRef<HTMLDivElement>(null)
   const dragging = useRef(false)
+  const [showContextMenu, setShowContextMenu] = useState(false)
+  const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 })
   const offset = useRef({ x: 0, y: 0 })
   const pos = useRef({ x: note.position.x, y: note.position.y })
 
@@ -376,6 +392,22 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
     onDragEnd(note.id, pos.current.x, pos.current.y)
   }, [note.id, onDragEnd])
 
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isOwned) return
+    setContextMenuPos({ x: e.clientX, y: e.clientY })
+    setShowContextMenu(true)
+  }, [isOwned])
+
+  // Close context menu on click anywhere
+  useEffect(() => {
+    if (!showContextMenu) return
+    const close = () => setShowContextMenu(false)
+    window.addEventListener("pointerdown", close)
+    return () => window.removeEventListener("pointerdown", close)
+  }, [showContextMenu])
+
   return (
     <motion.div
       ref={elRef}
@@ -390,6 +422,7 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onContextMenu={handleContextMenu}
       className="group absolute cursor-grab select-none active:cursor-grabbing"
       style={{
         left: note.position.x,
@@ -427,6 +460,26 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
           {new Date(note.createdAt).toLocaleDateString("zh-TW", { year: "numeric", month: "2-digit", day: "2-digit" }).replace(/-/g, "/")}
         </div>
       </div>
+
+      {/* Right-click context menu — fixed to viewport */}
+      {showContextMenu && (
+        <div
+          className="fixed z-9999 whitespace-nowrap rounded-lg bg-neutral-800 shadow-xl"
+          style={{ left: contextMenuPos.x, top: contextMenuPos.y }}
+        >
+          <button
+            onPointerDown={(e) => {
+              e.stopPropagation()
+              setShowContextMenu(false)
+              onDelete(note.id)
+            }}
+            className="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-sm text-red-400 transition-colors hover:bg-white/10"
+          >
+            <X className="h-3.5 w-3.5" />
+            刪除
+          </button>
+        </div>
+      )}
     </motion.div>
   )
 }
