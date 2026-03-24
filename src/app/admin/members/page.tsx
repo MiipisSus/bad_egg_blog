@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import type { Member } from "@/types/member"
 import { Pencil, Trash2, Plus, X, Upload, GripVertical, CreditCard } from "lucide-react"
+import { ImageCropper } from "@/components/admin/image-cropper"
 import {
   DndContext,
   closestCenter,
@@ -52,6 +53,8 @@ export default function AdminMembersPage() {
   const [nameCardPreview, setNameCardPreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null)
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
+  const [cropField, setCropField] = useState<"image" | "nameCard">("image")
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -185,15 +188,23 @@ export default function AdminMembersPage() {
   }
 
   function handleFileChange(field: "image" | "nameCard", file: File | null) {
-    setForm((prev) => ({ ...prev, [field]: file }))
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        if (field === "image") setImagePreview(e.target?.result as string)
-        else setNameCardPreview(e.target?.result as string)
-      }
-      reader.readAsDataURL(file)
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const src = e.target?.result as string
+      setCropField(field)
+      setCropSrc(src)
     }
+    reader.readAsDataURL(file)
+  }
+
+  function handleCropConfirm(blob: Blob) {
+    const file = new File([blob], `${cropField}.png`, { type: "image/png" })
+    setForm((prev) => ({ ...prev, [cropField]: file }))
+    const url = URL.createObjectURL(blob)
+    if (cropField === "image") setImagePreview(url)
+    else setNameCardPreview(url)
+    setCropSrc(null)
   }
 
   const TABS: { key: Tab; label: string; count: number }[] = [
@@ -365,7 +376,18 @@ export default function AdminMembersPage() {
                 <div>
                   <label className="text-sm font-medium">Photo</label>
                   <div className="mt-1 flex items-center gap-3">
-                    {imagePreview && <img src={imagePreview} alt="" className="h-16 w-16 rounded-lg object-cover" />}
+                    {imagePreview && (
+                      <div className="group/img relative h-16 w-16 overflow-hidden border border-border">
+                        <img src={imagePreview} alt="" className="h-full w-full object-cover transition-[filter] duration-200 group-hover/img:brightness-50" />
+                        <button
+                          type="button"
+                          onClick={() => { setCropField("image"); setCropSrc(imagePreview) }}
+                          className="absolute inset-0 flex cursor-pointer items-center justify-center text-[10px] font-medium text-white opacity-0 transition-opacity duration-200 group-hover/img:opacity-100"
+                        >
+                          裁切
+                        </button>
+                      </div>
+                    )}
                     <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 py-2 text-sm text-muted-foreground hover:border-foreground/40">
                       <Upload className="h-4 w-4" />
                       選擇檔案
@@ -382,7 +404,18 @@ export default function AdminMembersPage() {
                 <div>
                   <label className="text-sm font-medium">Name Card</label>
                   <div className="mt-1 flex items-center gap-3">
-                    {nameCardPreview && <img src={nameCardPreview} alt="" className="h-16 w-24 rounded-lg object-cover" />}
+                    {nameCardPreview && (
+                      <div className="group/img relative h-16 w-24 overflow-hidden border border-border">
+                        <img src={nameCardPreview} alt="" className="h-full w-full object-cover transition-[filter] duration-200 group-hover/img:brightness-50" />
+                        <button
+                          type="button"
+                          onClick={() => { setCropField("nameCard"); setCropSrc(nameCardPreview) }}
+                          className="absolute inset-0 flex cursor-pointer items-center justify-center text-[10px] font-medium text-white opacity-0 transition-opacity duration-200 group-hover/img:opacity-100"
+                        >
+                          裁切
+                        </button>
+                      </div>
+                    )}
                     <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 py-2 text-sm text-muted-foreground hover:border-foreground/40">
                       <Upload className="h-4 w-4" />
                       選擇檔案
@@ -464,6 +497,20 @@ export default function AdminMembersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Crop modal */}
+      {cropSrc && (
+        <ImageCropper
+          imageSrc={cropSrc}
+          defaultAspect={
+            cropField === "image"
+              ? LEADER_ROLES.includes(form.role) ? 16 / 9 : 1
+              : undefined
+          }
+          onCrop={handleCropConfirm}
+          onCancel={() => setCropSrc(null)}
+        />
       )}
     </div>
   )

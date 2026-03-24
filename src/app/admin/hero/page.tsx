@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Trash2, Plus, Upload, GripVertical, ImageIcon } from "lucide-react"
+import { ImageCropper } from "@/components/admin/image-cropper"
 import {
   DndContext,
   closestCenter,
@@ -29,6 +30,8 @@ export default function AdminHeroPage() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null)
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
+  const [recropId, setRecropId] = useState<number | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -50,17 +53,35 @@ export default function AdminHeroPage() {
     }
   }, [message])
 
-  async function handleUpload(file: File) {
+  function handleFileSelect(file: File) {
+    setRecropId(null)
+    const reader = new FileReader()
+    reader.onload = (e) => setCropSrc(e.target?.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  function handleRecrop(banner: Banner) {
+    setRecropId(banner.id)
+    setCropSrc(banner.image)
+  }
+
+  async function handleCropConfirm(blob: Blob) {
+    const editingId = recropId
+    setCropSrc(null)
+    setRecropId(null)
     setUploading(true)
     const formData = new FormData()
-    formData.append("image", file)
+    formData.append("image", blob, "banner.png")
 
-    const res = await fetch("/api/hero-banners", { method: "POST", body: formData })
+    const url = editingId ? `/api/hero-banners/${editingId}` : "/api/hero-banners"
+    const method = editingId ? "PATCH" : "POST"
+
+    const res = await fetch(url, { method, body: formData })
     const data = await res.json()
     setUploading(false)
 
     if (res.ok) {
-      setMessage({ text: data.message, type: "success" })
+      setMessage({ text: data.message || "已更新", type: "success" })
       fetchBanners()
     } else {
       setMessage({ text: data.error || "上傳失敗", type: "error" })
@@ -129,7 +150,7 @@ export default function AdminHeroPage() {
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0]
-              if (file) handleUpload(file)
+              if (file) handleFileSelect(file)
               e.target.value = ""
             }}
           />
@@ -155,17 +176,28 @@ export default function AdminHeroPage() {
                   banner={banner}
                   index={index}
                   onDelete={handleDelete}
+                  onRecrop={handleRecrop}
                 />
               ))}
             </div>
           </SortableContext>
         </DndContext>
       )}
+
+      {/* Crop modal */}
+      {cropSrc && (
+        <ImageCropper
+          imageSrc={cropSrc}
+          defaultAspect={3 / 2}
+          onCrop={handleCropConfirm}
+          onCancel={() => setCropSrc(null)}
+        />
+      )}
     </div>
   )
 }
 
-function SortableBannerRow({ banner, index, onDelete }: { banner: Banner; index: number; onDelete: (id: number) => void }) {
+function SortableBannerRow({ banner, index, onDelete, onRecrop }: { banner: Banner; index: number; onDelete: (id: number) => void; onRecrop: (banner: Banner) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: banner.id })
 
   const style = {
@@ -186,8 +218,14 @@ function SortableBannerRow({ banner, index, onDelete }: { banner: Banner; index:
 
       <span className="w-8 text-center text-sm font-medium text-muted-foreground">#{index + 1}</span>
 
-      <div className="h-20 w-36 flex-shrink-0 overflow-hidden rounded-md border border-border">
-        <img src={banner.image} alt={`Banner ${index + 1}`} className="h-full w-full object-cover" />
+      <div className="group/img relative h-20 w-36 shrink-0 overflow-hidden rounded-md border border-border">
+        <img src={banner.image} alt={`Banner ${index + 1}`} className="h-full w-full object-cover transition-[filter] duration-200 group-hover/img:brightness-50" />
+        <button
+          onClick={() => onRecrop(banner)}
+          className="absolute inset-0 flex cursor-pointer items-center justify-center text-xs font-medium text-white opacity-0 transition-opacity duration-200 group-hover/img:opacity-100"
+        >
+          裁切
+        </button>
       </div>
 
       <p className="flex-1 truncate text-sm text-muted-foreground">{banner.image}</p>
