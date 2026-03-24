@@ -2,7 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Plus, Eraser, Check, X, ChevronLeft, ChevronRight, Undo2, Redo2, Pipette, PaintBucket } from "lucide-react"
+import { Plus, Eraser, Check, X, ChevronLeft, ChevronRight, Undo2, Redo2, Pipette, PaintBucket, Menu } from "lucide-react"
+import Link from "next/link"
 import { DrawingCanvas, type DrawingCanvasRef } from "./drawing-canvas"
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -17,8 +18,8 @@ interface StickyNote {
 }
 
 // ─── Constants ──────────────────────────────────────────────────────
-const PAGE_SOFT_LIMIT = 10  // "追加畫布" becomes available after this
-const PAGE_HARD_LIMIT = 15  // absolute max per page
+const PAGE_SOFT_LIMIT = 1  // "追加畫布" becomes available after this
+const PAGE_HARD_LIMIT = 1  // absolute max per page
 
 const STICKY_RAW_COLORS = [
   "#ffffff",
@@ -108,62 +109,179 @@ export function Guestbook() {
     canvasRef.current?.clear()
   }
 
+  const [navOpen, setNavOpen] = useState(false)
+
   return (
-    <section className="min-h-screen pt-24 pb-12">
-      {/* Section Header */}
-      <div className="container mx-auto px-6 pb-10 text-center">
-        <h2 className="mt-4 text-balance text-4xl font-bold tracking-tight text-foreground md:text-5xl">
-          塗鴉簽到簿
-        </h2>
-        <p className="mx-auto mt-4 max-w-2xl text-pretty text-muted-foreground">
-          Leave your mark — doodle, draw, or write something fun!
-        </p>
-      </div>
+    <div className="relative h-screen w-screen overflow-hidden">
+      {/* ── Club name (top-left) ── */}
+      <Link
+        href="/"
+        className="fixed top-4 left-6 z-60 text-xl font-bold tracking-tight text-white/80 transition-colors hover:text-white"
+      >
+        CLUB NAME
+      </Link>
 
-      {/* Toolbar above blackboard */}
-      <div className="container mx-auto z-10 flex h-12 items-center px-6 pb-4 md:px-12">
-        {/* Left spacer to balance right buttons for centering */}
-        <div className="flex flex-1" />
+      {/* ── Menu icon (top-right) ── */}
+      <button
+        onClick={() => setNavOpen((v) => !v)}
+        className="fixed top-4 right-4 z-60 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-colors hover:bg-white/25"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
 
-        {/* Pagination dots - centered */}
-        <div className="flex items-center justify-center">
-          <div className={`flex items-center gap-3 ${totalPages <= 1 ? "invisible" : ""}`}>
-            <button
-              onClick={() => setCurrentPage((p) => (p - 1 + totalPages) % totalPages)}
-              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-foreground/50 transition-colors hover:text-foreground"
+      {/* ── Full-height sidebar nav (slides from right) ── */}
+      <AnimatePresence>
+        {navOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-60 bg-black/40"
+              onClick={() => setNavOpen(false)}
+            />
+            {/* Sidebar — w-1/4, min-w-50 for adjustability */}
+            <motion.nav
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              className="fixed top-0 right-0 bottom-0 z-60 flex w-1/4 min-w-50 flex-col bg-white/10 backdrop-blur-xl"
             >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            {Array.from({ length: Math.max(totalPages, 1) }, (_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentPage(i)}
-                className={`h-2.5 w-2.5 cursor-pointer rounded-full transition-all ${
-                  i === currentPage ? "scale-125 bg-foreground" : "bg-foreground/30"
-                }`}
+              {/* Close button */}
+              <div className="flex justify-end p-4">
+                <button
+                  onClick={() => setNavOpen(false)}
+                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Nav links */}
+              <div className="flex flex-1 flex-col gap-1 px-4">
+                {[
+                  { label: "首頁", href: "/" },
+                  { label: "成員", href: "/members" },
+                  { label: "畫廊", href: "/gallery" },
+                  { label: "簽到簿", href: "/sign-book" },
+                ].map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="rounded-lg px-4 py-3 text-base font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </motion.nav>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Hint toast (fixed top-center) ── */}
+      <AnimatePresence>
+        {hint && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-4 left-1/2 z-60 -translate-x-1/2"
+          >
+            <div className="rounded-lg bg-red-500/90 px-4 py-2 text-sm font-medium text-white shadow-lg">
+              {hint}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Full-screen Blackboard ── */}
+      <div
+        ref={boardRef}
+        className="relative h-full w-full"
+        style={{
+          backgroundColor: "#122018",
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E")`,
+          boxShadow: "inset 0 0 80px rgba(0,0,0,0.5)",
+        }}
+      >
+        {/* Chalk dust lines */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255,255,255,0.1) 40px, rgba(255,255,255,0.1) 41px)",
+          }}
+        />
+
+        {/* Sticky Notes for current page */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentPage}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="relative h-full w-full"
+          >
+            {pageNotes.map((note, index) => (
+              <DraggableStickyNote
+                key={note.id}
+                note={note}
+                index={index}
+                boardRef={boardRef}
+                isOwned={myNoteIds.has(note.id)}
+                isDragging={draggedId === note.id}
+                onDragStart={() => setDraggedId(note.id)}
+                onDragEnd={handleDragEnd}
               />
             ))}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* ── Fixed bottom control bar ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center px-6 backdrop-blur-md">
+        {/* Left spacer */}
+        <div className="flex flex-1" />
+
+        {/* Pagination dots — centered */}
+        <div className={`flex items-center gap-2 ${totalPages <= 1 ? "invisible" : ""}`}>
+          <button
+            onClick={() => setCurrentPage((p) => (p - 1 + totalPages) % totalPages)}
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-white/50 transition-colors hover:text-white"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          {Array.from({ length: Math.max(totalPages, 1) }, (_, i) => (
             <button
-              onClick={() => setCurrentPage((p) => (p + 1) % totalPages)}
-              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-foreground/50 transition-colors hover:text-foreground"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+              key={i}
+              onClick={() => setCurrentPage(i)}
+              className={`h-2.5 w-2.5 cursor-pointer rounded-full transition-all ${
+                i === currentPage ? "scale-125 bg-white" : "bg-white/30"
+              }`}
+            />
+          ))}
+          <button
+            onClick={() => setCurrentPage((p) => (p + 1) % totalPages)}
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-white/50 transition-colors hover:text-white"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
 
-        {/* Right side buttons */}
+        {/* Right side — buttons */}
         <div className="flex flex-1 items-center justify-end gap-3">
-          {/* Add page button */}
           <button
             onClick={handleAddPage}
             disabled={!canAddPage}
-            className="flex cursor-pointer items-center gap-2 rounded-full border border-foreground/20 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-30"
+            className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/20 px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
           >
-            追加畫布！
+            追加畫布
           </button>
 
-          {/* Add note button */}
           <button
             onClick={() => {
               if (pages[currentPage].length >= PAGE_HARD_LIMIT) {
@@ -173,74 +291,11 @@ export function Guestbook() {
               }
               setIsModalOpen(true)
             }}
-            className="flex cursor-pointer items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/80"
+            className="flex cursor-pointer items-center gap-1.5 rounded-full bg-white/90 px-5 py-2 text-sm font-medium text-neutral-900 transition-colors hover:bg-white"
           >
             <Plus className="h-4 w-4" />
             便利貼
           </button>
-        </div>
-      </div>
-
-      {/* Hint toast */}
-      <AnimatePresence>
-        {hint && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="container mx-auto px-6 pb-2 md:px-12"
-          >
-            <div className="mx-auto w-fit rounded-lg bg-red-500/90 px-4 py-2 text-sm font-medium text-white shadow-lg">
-              {hint}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Blackboard */}
-      <div>
-        <div
-          ref={boardRef}
-          className="relative h-[90vh] w-full overflow-hidden"
-          style={{
-            backgroundColor: "#122018",
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E")`,
-            boxShadow: "inset 0 0 80px rgba(0,0,0,0.5)",
-          }}
-        >
-          {/* Chalk dust lines */}
-          <div
-            className="pointer-events-none absolute inset-0 opacity-[0.03]"
-            style={{
-              backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255,255,255,0.1) 40px, rgba(255,255,255,0.1) 41px)",
-            }}
-          />
-
-          {/* Sticky Notes for current page */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentPage}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="relative h-full w-full"
-            >
-              {pageNotes.map((note, index) => (
-                <DraggableStickyNote
-                  key={note.id}
-                  note={note}
-                  index={index}
-                  boardRef={boardRef}
-                  isOwned={myNoteIds.has(note.id)}
-                  isDragging={draggedId === note.id}
-                  onDragStart={() => setDraggedId(note.id)}
-                  onDragEnd={handleDragEnd}
-                />
-              ))}
-            </motion.div>
-          </AnimatePresence>
-
         </div>
       </div>
 
@@ -259,7 +314,7 @@ export function Guestbook() {
           />
         )}
       </AnimatePresence>
-    </section>
+    </div>
   )
 }
 
@@ -286,7 +341,7 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
   }, [note.position.x, note.position.y])
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if (!isOwned || !elRef.current || !boardRef.current) return
+    if (!elRef.current || !boardRef.current) return
     e.preventDefault()
     e.stopPropagation()
     dragging.current = true
@@ -295,7 +350,7 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
     const rect = elRef.current.getBoundingClientRect()
     offset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
     elRef.current.setPointerCapture(e.pointerId)
-  }, [isOwned, boardRef, onDragStart])
+  }, [boardRef, onDragStart])
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragging.current || !elRef.current || !boardRef.current) return
@@ -335,7 +390,7 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      className={`group absolute select-none ${isOwned ? "cursor-grab active:cursor-grabbing" : ""}`}
+      className="group absolute cursor-grab select-none active:cursor-grabbing"
       style={{
         left: note.position.x,
         top: note.position.y,
