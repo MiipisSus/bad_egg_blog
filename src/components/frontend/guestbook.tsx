@@ -355,8 +355,8 @@ export function Guestbook() {
 
     const formData = new FormData()
     formData.append("image", blob, "sticker.png")
-    formData.append("posX", "0.04")
-    formData.append("posY", "0.06")
+    formData.append("posX", "0.12")
+    formData.append("posY", "0.18")
     formData.append("zIndex", String(zIndexCounter.current))
     formData.append("page", String(pageIds[currentPage]))
     formData.append("author", authorName.trim())
@@ -445,8 +445,8 @@ export function Guestbook() {
     const visitorId = getVisitorId()
 
     const formData = new FormData()
-    formData.append("posX", "0.04")
-    formData.append("posY", "0.06")
+    formData.append("posX", "0.12")
+    formData.append("posY", "0.18")
     formData.append("zIndex", String(zIndexCounter.current))
     formData.append("page", String(pageIds[currentPage]))
     formData.append("author", authorName.trim())
@@ -495,14 +495,17 @@ export function Guestbook() {
   const [navOpen, setNavOpen] = useState(false)
   const [selectedNoteId, setSelectedNoteId] = useState<number | null>(null)
   const [boardWidth, setBoardWidth] = useState<number>(0)
+  const [coordBase, setCoordBase] = useState<number>(0) // 16:9 reference width for coordinate mapping
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Calculate board width in JS — CSS max()/calc() with viewport units is unreliable on mobile
+  // Visual board = max(vw, vh*16/9) to fill screen; coordinate base = vh*16/9 (always 16:9)
   useEffect(() => {
     function calc() {
       const vw = window.innerWidth
       const vh = window.innerHeight
-      setBoardWidth(Math.max(vw, vh * 16 / 9))
+      const base169 = Math.round(vh * 16 / 9)
+      setCoordBase(base169)
+      setBoardWidth(Math.max(vw, base169))
     }
     calc()
     window.addEventListener("resize", calc)
@@ -669,9 +672,9 @@ export function Guestbook() {
       {/* ── Blackboard — 16:9 min ratio, scrollable when wider than viewport ── */}
       <div
         ref={boardRef}
-        className="relative isolate"
+        className="relative isolate mx-auto"
         style={{
-          width: boardWidth > 0 ? `${boardWidth}px` : "100vw",
+          width: boardWidth > 0 ? `${boardWidth}px` : "calc(100dvh * 16 / 9)",
           height: "100%",
           backgroundColor: "#122018",
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E")`,
@@ -708,6 +711,7 @@ export function Guestbook() {
                 note={note}
                 index={index}
                 boardRef={boardRef}
+                coordBase={coordBase}
                 isOwned={note.visitorId === getVisitorId()}
                 isDragging={draggedId === note.id}
                 isSelected={selectedNoteId === note.id}
@@ -902,6 +906,7 @@ interface DraggableStickyNoteProps {
   note: StickyNote
   index: number
   boardRef: React.RefObject<HTMLDivElement | null>
+  coordBase: number // 16:9 reference width (vh * 16/9) for coordinate mapping
   isOwned: boolean
   isDragging: boolean
   isSelected: boolean
@@ -911,7 +916,7 @@ interface DraggableStickyNoteProps {
   onDelete: (id: number) => void
 }
 
-function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, isSelected, onSelect, onDragStart, onDragEnd, onDelete }: DraggableStickyNoteProps) {
+function DraggableStickyNote({ note, index, boardRef, coordBase, isOwned, isDragging, isSelected, onSelect, onDragStart, onDragEnd, onDelete }: DraggableStickyNoteProps) {
   const elRef = useRef<HTMLDivElement>(null)
   const dragging = useRef(false)
   const [showContextMenu, setShowContextMenu] = useState(false)
@@ -919,17 +924,30 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, isSel
   const offset = useRef({ x: 0, y: 0 })
   const pos = useRef({ x: note.position.x, y: note.position.y })
 
-  // Position is stored as ratio (0~1). Convert to px for rendering.
+  // Scale note size proportionally to coordBase (16:9 reference width)
+  const BASE_BOARD_W = 1920
+  const boardScale = coordBase > 0 ? coordBase / BASE_BOARD_W : 1
+  const baseNoteSize = note.shape === "heart" ? 288 : note.noteType === "bubble" ? 200 : 256
+  const noteSize = baseNoteSize * boardScale
+
+  // coordBase = vh * 16/9 (always 16:9), coordBaseH = vh
+  const coordBaseH = coordBase > 0 ? coordBase * 9 / 16 : 0
+
+  // Position is stored as center-point ratio (0~1) of the 16:9 area. Convert to top-left px.
+  // On wide desktops, board > coordBase; offset notes into the center of the board.
   const scaledPos = useCallback(() => {
-    const noteSize = note.shape === "heart" ? 288 : 256
-    if (!boardRef.current) return { x: 0, y: 0 }
+    if (!boardRef.current || coordBase <= 0) return { x: 0, y: 0 }
     const bw = boardRef.current.offsetWidth
     const bh = boardRef.current.offsetHeight
+    const offsetX = (bw - coordBase) / 2 // center 16:9 area within wider board
+    // ratio → center px in 16:9 area → top-left px
+    const cx = note.position.x * coordBase + offsetX
+    const cy = note.position.y * coordBaseH
     return {
-      x: Math.max(0, Math.min(note.position.x * bw, bw - noteSize)),
-      y: Math.max(0, Math.min(note.position.y * bh, bh - noteSize)),
+      x: Math.max(0, Math.min(cx - noteSize / 2, bw - noteSize)),
+      y: Math.max(0, Math.min(cy - noteSize / 2, bh - noteSize)),
     }
-  }, [note.position.x, note.position.y, note.shape, boardRef])
+  }, [note.position.x, note.position.y, noteSize, boardRef, coordBase, coordBaseH])
 
   // Sync position from props when not dragging
   useEffect(() => {
@@ -1011,11 +1029,13 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, isSel
     if (!dragging.current) return
     dragging.current = false
     elRef.current?.releasePointerCapture(e.pointerId)
-    // Convert px back to ratio (0~1) for storage
+    // Convert top-left px back to center-point ratio (0~1) of 16:9 area
     const bw = boardRef.current?.offsetWidth || 1
-    const bh = boardRef.current?.offsetHeight || 1
-    onDragEnd(note.id, pos.current.x / bw, pos.current.y / bh)
-  }, [note.id, onDragEnd, isMobile, isSelected, onSelect])
+    const offsetX = (bw - coordBase) / 2
+    const storeX = (pos.current.x + noteSize / 2 - offsetX) / (coordBase || 1)
+    const storeY = (pos.current.y + noteSize / 2) / (coordBaseH || 1)
+    onDragEnd(note.id, storeX, storeY)
+  }, [note.id, onDragEnd, isMobile, isSelected, onSelect, coordBase, coordBaseH, noteSize])
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -1056,6 +1076,8 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, isSel
         touchAction: isSelected ? "none" : "auto",
         outline: isSelected ? "3px solid rgba(255,255,255,0.7)" : undefined,
         outlineOffset: isSelected ? "4px" : undefined,
+        transform: `scale(${boardScale})`,
+        transformOrigin: "top left",
       }}
     >
       {note.noteType === "bubble" ? (
