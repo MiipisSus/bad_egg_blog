@@ -919,27 +919,32 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, isSel
   const offset = useRef({ x: 0, y: 0 })
   const pos = useRef({ x: note.position.x, y: note.position.y })
 
-  // Clamp position to board bounds
-  const clampedPos = useCallback(() => {
+  // Scale position proportionally to current board size
+  // Reference size: 1920x1080 (typical desktop where notes are originally placed)
+  const REF_W = 1920
+  const REF_H = 1080
+  const scaledPos = useCallback(() => {
     const noteSize = note.shape === "heart" ? 288 : 256
     if (!boardRef.current) return { x: note.position.x, y: note.position.y }
     const bw = boardRef.current.offsetWidth
     const bh = boardRef.current.offsetHeight
+    const scaleX = bw / REF_W
+    const scaleY = bh / REF_H
     return {
-      x: Math.max(0, Math.min(note.position.x, bw - noteSize)),
-      y: Math.max(0, Math.min(note.position.y, bh - noteSize)),
+      x: Math.max(0, Math.min(note.position.x * scaleX, bw - noteSize)),
+      y: Math.max(0, Math.min(note.position.y * scaleY, bh - noteSize)),
     }
   }, [note.position.x, note.position.y, note.shape, boardRef])
 
   // Sync position from props when not dragging
   useEffect(() => {
-    const c = clampedPos()
+    const c = scaledPos()
     pos.current = c
     if (elRef.current) {
       elRef.current.style.left = `${c.x}px`
       elRef.current.style.top = `${c.y}px`
     }
-  }, [clampedPos])
+  }, [scaledPos])
 
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768
   const touchStart = useRef<{ x: number; y: number; time: number } | null>(null)
@@ -1047,8 +1052,8 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, isSel
       onContextMenu={handleContextMenu}
       className={`group absolute select-none ${isSelected ? "cursor-grabbing" : "cursor-grab"} active:cursor-grabbing`}
       style={{
-        left: clampedPos().x,
-        top: clampedPos().y,
+        left: scaledPos().x,
+        top: scaledPos().y,
         zIndex: isDragging || isSelected ? 999 : note.zIndex,
         touchAction: isSelected ? "none" : "auto",
         outline: isSelected ? "3px solid rgba(255,255,255,0.7)" : undefined,
