@@ -101,7 +101,7 @@ export function Activities() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.2 }}
         transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
-        className="flex w-[85dvw] flex-col items-stretch px-6 mx-auto md:min-h-[80vh] md:flex-row md:px-12"
+        className="flex w-full flex-col items-stretch px-0 mx-auto md:w-[85dvw] md:min-h-[80vh] md:flex-row md:px-12"
       >
         {/* Desktop: Left Side Vertical Dots */}
         <div className="hidden w-20 flex-col items-center justify-center md:flex">
