@@ -1077,7 +1077,10 @@ function DraggableStickyNote({ note, index, boardRef, coordBase, isOwned, isDrag
         outline: isSelected ? "3px solid rgba(255,255,255,0.7)" : undefined,
         outlineOffset: isSelected ? "4px" : undefined,
         transformOrigin: "top left",
-      }}
+        willChange: isDragging ? "transform, left, top" : "auto",
+        backfaceVisibility: "hidden",
+        WebkitBackfaceVisibility: "hidden",
+      } as React.CSSProperties}
     >
       {note.noteType === "bubble" ? (
         /* ── Bubble note ── */
