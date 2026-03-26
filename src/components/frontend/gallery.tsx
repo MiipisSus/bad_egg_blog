@@ -438,7 +438,7 @@ function GalleryCard({
 
         {/* Title & Date - centered in bottom white area */}
         <div className="mt-3 text-center">
-          <p className="text-sm font-semibold text-slate-800">
+          <p className="text-sm font-semibold text-slate-800" style={{ fontFamily: "var(--font-huninn)" }}>
             {photo.albumTitle}
           </p>
           <p className="mt-1 text-xs text-slate-400">
@@ -602,7 +602,7 @@ function GalleryModal({
                   <div className="absolute bottom-3 right-3 z-10 max-w-[60%] rounded-lg px-4 py-2.5 text-right">
                     <p
                       className="text-4xl text-white"
-                      style={{ fontFamily: "'Mantou Sans', sans-serif" }}
+                      style={{ fontFamily: "var(--font-huninn)" }}
                     >
                       {photo.albumTitle}
                     </p>

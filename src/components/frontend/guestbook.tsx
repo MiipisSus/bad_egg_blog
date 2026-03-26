@@ -1093,7 +1093,7 @@ function DraggableStickyNote({ note, index, boardRef, coordBase, isOwned, isDrag
           >
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800" style={{ fontFamily: "var(--font-huninn)" }}>{note.text}</p>
             {note.author && (
-              <p className="mt-2 text-[11px] text-slate-500">— {note.author}</p>
+              <p className="mt-2 text-[11px] text-slate-500" style={{ fontFamily: "var(--font-huninn)" }}>— {note.author}</p>
             )}
           </div>
           {/* Info on hover */}
@@ -1136,7 +1136,7 @@ function DraggableStickyNote({ note, index, boardRef, coordBase, isOwned, isDrag
 
           {/* Info on hover */}
           <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/70 px-3 py-1 text-xs text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-            {note.author && <span>{note.author} · </span>}
+            {note.author && <span style={{ fontFamily: "var(--font-huninn)" }}>{note.author} · </span>}
             {new Date(note.createdAt).toLocaleDateString("zh-TW", { year: "numeric", month: "2-digit", day: "2-digit" }).replace(/-/g, "/")}
           </div>
         </div>

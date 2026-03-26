@@ -119,7 +119,7 @@ function PolaroidCard({ member, rotation, onNameCardClick }: PolaroidCardProps) 
           )}
         </div>
 
-        <p className="mt-3 text-center text-sm font-semibold text-slate-700">
+        <p className="mt-3 text-center text-sm font-semibold text-slate-700" style={{ fontFamily: "var(--font-huninn)" }}>
           {member.name}
         </p>
         <p className="mt-3 text-center text-sm font-semibold text-slate-400">
