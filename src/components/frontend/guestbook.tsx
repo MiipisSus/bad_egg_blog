@@ -2,7 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Plus, Eraser, Check, X, ChevronLeft, ChevronRight, Undo2, Redo2, Pipette, PaintBucket, Menu, MessageCircle } from "lucide-react"
+import { Plus, Eraser, Check, X, ChevronLeft, ChevronRight, Undo2, Redo2, Pipette, PaintBucket, Menu, MessageCircle, Square, Circle, Heart } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import Link from "next/link"
 import { DrawingCanvas, type DrawingCanvasRef } from "./drawing-canvas"
 
@@ -110,7 +111,8 @@ function getVisitorId(): string {
 
 // ─── Constants ──────────────────────────────────────────────────────
 const PAGE_SOFT_LIMIT = 10  // "追加畫布" becomes available after this
-const PAGE_HARD_LIMIT = 15  // absolute max per page
+const DRAWING_LIMIT = 15    // max drawing sticky notes per page
+const BUBBLE_LIMIT = 15     // max bubble messages per page
 
 const STICKY_RAW_COLORS = [
   "#ffffff",
@@ -339,7 +341,8 @@ export function Guestbook() {
   const handleSave = useCallback(async () => {
     if (!canvasRef.current) return
 
-    if (pages[currentPage].length >= PAGE_HARD_LIMIT) {
+    const drawingCount = pages[currentPage].filter((n) => n.noteType === "drawing").length
+    if (drawingCount >= DRAWING_LIMIT) {
       setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！")
       setTimeout(() => setHint(null), 3000)
       return
@@ -435,8 +438,9 @@ export function Guestbook() {
   const handleBubbleSave = useCallback(async () => {
     if (!bubbleText.trim()) return
 
-    if (pages[currentPage].length >= PAGE_HARD_LIMIT) {
-      setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！")
+    const bubbleCount = pages[currentPage].filter((n) => n.noteType === "bubble").length
+    if (bubbleCount >= BUBBLE_LIMIT) {
+      setHint("該頁留言數已達上限（15則），請切換到其他頁面或追加新畫布！")
       setTimeout(() => setHint(null), 3000)
       return
     }
@@ -753,7 +757,7 @@ export function Guestbook() {
       </AnimatePresence>
 
       {/* ── Fixed bottom control bar — Desktop: single row ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 hidden h-16 items-center px-6 backdrop-blur-md md:flex">
+      <div className="fixed bottom-4 left-0 right-0 z-50 hidden h-16 items-center px-6 md:flex">
         <div className="flex flex-1" />
         <div className={`flex items-center gap-2 ${totalPages <= 1 ? "invisible" : ""}`}>
           <button onClick={() => setCurrentPage((p) => (p - 1 + totalPages) % totalPages)} className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-white/50 transition-colors hover:text-white">
@@ -768,13 +772,13 @@ export function Guestbook() {
         </div>
         <div className="flex flex-1 items-center justify-end gap-3">
           <button onClick={handleAddPage} disabled={!canAddPage} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/20 px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30">追加畫布</button>
-          <button onClick={() => { if (pages[currentPage].length >= PAGE_HARD_LIMIT) { setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！"); setTimeout(() => setHint(null), 3000); return }; setIsModalOpen(true) }} className="flex cursor-pointer items-center gap-1.5 rounded-full bg-white/90 px-5 py-2 text-sm font-medium text-neutral-900 transition-colors hover:bg-white"><Plus className="h-4 w-4" />便利貼</button>
-          <button onClick={() => { if (pages[currentPage].length >= PAGE_HARD_LIMIT) { setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！"); setTimeout(() => setHint(null), 3000); return }; setIsBubbleModalOpen(true) }} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/30 px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"><MessageCircle className="h-4 w-4" />留言</button>
+          <button onClick={() => { if (pages[currentPage].filter((n) => n.noteType === "drawing").length >= DRAWING_LIMIT) { setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！"); setTimeout(() => setHint(null), 3000); return }; setIsModalOpen(true) }} className="flex cursor-pointer items-center gap-1.5 rounded-full bg-white/90 px-5 py-2 text-sm font-medium text-neutral-900 transition-colors hover:bg-white"><Plus className="h-4 w-4" />便利貼</button>
+          <button onClick={() => { if (pages[currentPage].filter((n) => n.noteType === "bubble").length >= BUBBLE_LIMIT) { setHint("該頁留言數已達上限（15則），請切換到其他頁面或追加新畫布！"); setTimeout(() => setHint(null), 3000); return }; setIsBubbleModalOpen(true) }} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/30 px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"><MessageCircle className="h-4 w-4" />留言</button>
         </div>
       </div>
 
       {/* ── Fixed bottom control bar — Mobile: two rows, centered ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col items-center gap-2 px-4 py-3 backdrop-blur-md md:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col items-center gap-2 px-4 py-3 md:hidden">
         {/* Row 1: pagination dots + arrows */}
         <div className={`flex items-center gap-2 ${totalPages <= 1 ? "invisible" : ""}`}>
           <button onClick={() => setCurrentPage((p) => (p - 1 + totalPages) % totalPages)} className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-white/50 transition-colors hover:text-white">
@@ -791,8 +795,8 @@ export function Guestbook() {
         {/* Row 2: action buttons */}
         <div className="flex items-center justify-center gap-2">
           <button onClick={handleAddPage} disabled={!canAddPage} className="flex cursor-pointer items-center gap-1 rounded-full border border-white/20 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30">追加畫布</button>
-          <button onClick={() => { if (pages[currentPage].length >= PAGE_HARD_LIMIT) { setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！"); setTimeout(() => setHint(null), 3000); return }; setIsModalOpen(true) }} className="flex cursor-pointer items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-neutral-900 transition-colors hover:bg-white"><Plus className="h-3.5 w-3.5" />便利貼</button>
-          <button onClick={() => { if (pages[currentPage].length >= PAGE_HARD_LIMIT) { setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！"); setTimeout(() => setHint(null), 3000); return }; setIsBubbleModalOpen(true) }} className="flex cursor-pointer items-center gap-1 rounded-full border border-white/30 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"><MessageCircle className="h-3.5 w-3.5" />留言</button>
+          <button onClick={() => { if (pages[currentPage].filter((n) => n.noteType === "drawing").length >= DRAWING_LIMIT) { setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！"); setTimeout(() => setHint(null), 3000); return }; setIsModalOpen(true) }} className="flex cursor-pointer items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-neutral-900 transition-colors hover:bg-white"><Plus className="h-3.5 w-3.5" />便利貼</button>
+          <button onClick={() => { if (pages[currentPage].filter((n) => n.noteType === "bubble").length >= BUBBLE_LIMIT) { setHint("該頁留言數已達上限（15則），請切換到其他頁面或追加新畫布！"); setTimeout(() => setHint(null), 3000); return }; setIsBubbleModalOpen(true) }} className="flex cursor-pointer items-center gap-1 rounded-full border border-white/30 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"><MessageCircle className="h-3.5 w-3.5" />留言</button>
         </div>
       </div>
 
@@ -861,6 +865,7 @@ export function Guestbook() {
                 value={authorName}
                 onChange={(e) => setAuthorName(e.target.value)}
                 className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+                style={{ fontFamily: "var(--font-huninn)" }}
               />
 
               {/* Message */}
@@ -870,6 +875,7 @@ export function Guestbook() {
                 onChange={(e) => setBubbleText(e.target.value)}
                 rows={3}
                 className="mt-2 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+                style={{ fontFamily: "var(--font-huninn)" }}
                 autoFocus
               />
 
@@ -1192,10 +1198,10 @@ interface DrawingModalProps {
   onClose: () => void
 }
 
-const SHAPE_OPTIONS: { value: NoteShape; label: string; icon: string }[] = [
-  { value: "square", label: "正方形", icon: "⬜" },
-  { value: "circle", label: "圓形", icon: "⭕" },
-  { value: "heart", label: "愛心", icon: "💗" },
+const SHAPE_OPTIONS: { value: NoteShape; label: string; Icon: LucideIcon }[] = [
+  { value: "square", label: "正方形", Icon: Square },
+  { value: "circle", label: "圓形", Icon: Circle },
+  { value: "heart", label: "愛心", Icon: Heart },
 ]
 
 function DrawingModal({
@@ -1287,7 +1293,7 @@ function DrawingModal({
                 }`}
                 title={opt.label}
               >
-                {opt.icon}
+                <opt.Icon className="h-5 w-5 text-white" fill="white" />
               </button>
             ))}
           </div>
@@ -1299,6 +1305,7 @@ function DrawingModal({
             value={authorName}
             onChange={(e) => onAuthorChange(e.target.value)}
             className="w-full rounded-sm bg-white/90 px-4 py-2 text-sm shadow-lg outline-none backdrop-blur-sm focus:ring-2 focus:ring-white/50"
+            style={{ fontFamily: "var(--font-huninn)" }}
           />
 
           {/* Canvas */}
