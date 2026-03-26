@@ -3,12 +3,20 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
+
+const NAV_ITEMS = [
+  { label: "首頁", href: "/" },
+  { label: "成員", href: "/members" },
+  { label: "畫廊", href: "/gallery" },
+  { label: "簽到簿", href: "/sign-book" },
+]
 
 export function Header() {
   const pathname = usePathname()
   const isHome = pathname === "/"
   const [isScrolled, setIsScrolled] = useState(!isHome)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
     // Non-home pages: always show solid header
@@ -27,6 +35,11 @@ export function Header() {
 
     return () => window.removeEventListener("scroll", handleScroll)
   }, [isHome])
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
 
   return (
     <motion.header
@@ -55,14 +68,9 @@ export function Header() {
           </motion.span>
         </Link>
 
-        {/* Navigation - Right Side */}
+        {/* Navigation - Desktop */}
         <nav className="hidden items-center gap-8 md:flex">
-          {[
-            { label: "首頁", href: "/" },
-            { label: "成員", href: "/members" },
-            { label: "畫廊", href: "/gallery" },
-            { label: "簽到簿", href: "/sign-book" },
-          ].map((item) => (
+          {NAV_ITEMS.map((item) => (
             <Link
               key={item.label}
               href={item.href}
@@ -83,22 +91,78 @@ export function Header() {
           ))}
         </nav>
 
-        {/* Mobile Menu Button */}
-        <button className="flex flex-col gap-1.5 md:hidden">
+        {/* Mobile Menu Button — hamburger ↔ X animation */}
+        <button
+          className="relative z-50 flex h-8 w-8 cursor-pointer flex-col items-end justify-center gap-1.5 md:hidden"
+          onClick={() => setMobileOpen((v) => !v)}
+          aria-label={mobileOpen ? "關閉選單" : "開啟選單"}
+        >
           <motion.span
-            animate={{ backgroundColor: isScrolled ? "var(--foreground)" : "white" }}
+            animate={{
+              backgroundColor: (mobileOpen || isScrolled) ? "var(--foreground)" : "white",
+              rotate: mobileOpen ? 45 : 0,
+              y: mobileOpen ? 8 : 0,
+              width: mobileOpen ? 24 : 24,
+            }}
+            transition={{ duration: 0.25 }}
             className="h-0.5 w-6 rounded-full"
           />
           <motion.span
-            animate={{ backgroundColor: isScrolled ? "var(--foreground)" : "white" }}
+            animate={{
+              backgroundColor: (mobileOpen || isScrolled) ? "var(--foreground)" : "white",
+              opacity: mobileOpen ? 0 : 1,
+              scaleX: mobileOpen ? 0 : 1,
+            }}
+            transition={{ duration: 0.2 }}
             className="h-0.5 w-6 rounded-full"
           />
           <motion.span
-            animate={{ backgroundColor: isScrolled ? "var(--foreground)" : "white" }}
+            animate={{
+              backgroundColor: (mobileOpen || isScrolled) ? "var(--foreground)" : "white",
+              rotate: mobileOpen ? -45 : 0,
+              y: mobileOpen ? -8 : 0,
+              width: mobileOpen ? 24 : 16,
+            }}
+            transition={{ duration: 0.25 }}
             className="h-0.5 w-4 rounded-full"
           />
         </button>
       </div>
+
+      {/* Mobile Dropdown Nav */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.nav
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="overflow-hidden border-t border-black/5 bg-white/95 backdrop-blur-xl md:hidden"
+          >
+            <div className="flex flex-col px-6 py-4">
+              {NAV_ITEMS.map((item, i) => (
+                <motion.div
+                  key={item.label}
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: i * 0.05 + 0.1, duration: 0.25 }}
+                >
+                  <Link
+                    href={item.href}
+                    className={`block py-3 text-lg font-medium transition-colors ${
+                      pathname === item.href
+                        ? "text-foreground"
+                        : "text-foreground/60 active:text-foreground"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </motion.nav>
+        )}
+      </AnimatePresence>
     </motion.header>
   )
 }
