@@ -1056,8 +1056,8 @@ function DraggableStickyNote({ note, index, boardRef, coordBase, isOwned, isDrag
   return (
     <motion.div
       ref={elRef}
-      initial={{ opacity: 0, y: -60, scale: 0.8 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      initial={{ opacity: 0, y: -60, scale: 0.8 * boardScale }}
+      animate={{ opacity: 1, y: 0, scale: boardScale }}
       transition={{
         type: "spring",
         stiffness: 150,
@@ -1076,7 +1076,6 @@ function DraggableStickyNote({ note, index, boardRef, coordBase, isOwned, isDrag
         touchAction: isSelected ? "none" : "auto",
         outline: isSelected ? "3px solid rgba(255,255,255,0.7)" : undefined,
         outlineOffset: isSelected ? "4px" : undefined,
-        transform: `scale(${boardScale})`,
         transformOrigin: "top left",
       }}
     >
@@ -1104,8 +1103,8 @@ function DraggableStickyNote({ note, index, boardRef, coordBase, isOwned, isDrag
         <div
           className="pointer-events-none relative"
           style={{
-            width: note.shape === "heart" ? "18rem" : "16rem",
-            height: note.shape === "heart" ? "17rem" : "16rem",
+            width: note.shape === "heart" ? "24rem" : "22rem",
+            height: note.shape === "heart" ? "23rem" : "22rem",
             filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.25))",
           }}
         >
