@@ -355,8 +355,8 @@ export function Guestbook() {
 
     const formData = new FormData()
     formData.append("image", blob, "sticker.png")
-    formData.append("posX", "80")
-    formData.append("posY", "60")
+    formData.append("posX", "0.04")
+    formData.append("posY", "0.06")
     formData.append("zIndex", String(zIndexCounter.current))
     formData.append("page", String(pageIds[currentPage]))
     formData.append("author", authorName.trim())
@@ -445,8 +445,8 @@ export function Guestbook() {
     const visitorId = getVisitorId()
 
     const formData = new FormData()
-    formData.append("posX", "80")
-    formData.append("posY", "60")
+    formData.append("posX", "0.04")
+    formData.append("posY", "0.06")
     formData.append("zIndex", String(zIndexCounter.current))
     formData.append("page", String(pageIds[currentPage]))
     formData.append("author", authorName.trim())
@@ -919,20 +919,15 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, isSel
   const offset = useRef({ x: 0, y: 0 })
   const pos = useRef({ x: note.position.x, y: note.position.y })
 
-  // Scale position proportionally to current board size
-  // Reference size: 1920x1080 (typical desktop where notes are originally placed)
-  const REF_W = 1920
-  const REF_H = 1080
+  // Position is stored as ratio (0~1). Convert to px for rendering.
   const scaledPos = useCallback(() => {
     const noteSize = note.shape === "heart" ? 288 : 256
-    if (!boardRef.current) return { x: note.position.x, y: note.position.y }
+    if (!boardRef.current) return { x: 0, y: 0 }
     const bw = boardRef.current.offsetWidth
     const bh = boardRef.current.offsetHeight
-    const scaleX = bw / REF_W
-    const scaleY = bh / REF_H
     return {
-      x: Math.max(0, Math.min(note.position.x * scaleX, bw - noteSize)),
-      y: Math.max(0, Math.min(note.position.y * scaleY, bh - noteSize)),
+      x: Math.max(0, Math.min(note.position.x * bw, bw - noteSize)),
+      y: Math.max(0, Math.min(note.position.y * bh, bh - noteSize)),
     }
   }, [note.position.x, note.position.y, note.shape, boardRef])
 
@@ -1016,12 +1011,10 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, isSel
     if (!dragging.current) return
     dragging.current = false
     elRef.current?.releasePointerCapture(e.pointerId)
-    // Convert back to reference coordinates (1920x1080) for storage
-    const bw = boardRef.current?.offsetWidth || REF_W
-    const bh = boardRef.current?.offsetHeight || REF_H
-    const storeX = pos.current.x / (bw / REF_W)
-    const storeY = pos.current.y / (bh / REF_H)
-    onDragEnd(note.id, storeX, storeY)
+    // Convert px back to ratio (0~1) for storage
+    const bw = boardRef.current?.offsetWidth || 1
+    const bh = boardRef.current?.offsetHeight || 1
+    onDragEnd(note.id, pos.current.x / bw, pos.current.y / bh)
   }, [note.id, onDragEnd, isMobile, isSelected, onSelect])
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
