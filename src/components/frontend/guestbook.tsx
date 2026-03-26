@@ -494,9 +494,23 @@ export function Guestbook() {
 
   const [navOpen, setNavOpen] = useState(false)
   const [selectedNoteId, setSelectedNoteId] = useState<number | null>(null)
+  const [boardWidth, setBoardWidth] = useState<number>(0)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Calculate board width in JS — CSS max()/calc() with viewport units is unreliable on mobile
+  useEffect(() => {
+    function calc() {
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+      setBoardWidth(Math.max(vw, vh * 16 / 9))
+    }
+    calc()
+    window.addEventListener("resize", calc)
+    return () => window.removeEventListener("resize", calc)
+  }, [])
 
   return (
-    <div className="relative h-screen w-screen overflow-x-auto overflow-y-hidden" style={{ backgroundColor: "#122018" }}>
+    <div ref={scrollRef} className="h-dvh w-dvw overflow-x-scroll overflow-y-hidden">
       {/* ── Fixed header bar ── */}
       <div className="fixed top-0 left-0 right-0 z-60 flex h-14 items-center justify-between px-6">
         {/* Club name (left) */}
@@ -655,10 +669,10 @@ export function Guestbook() {
       {/* ── Blackboard — 16:9 min ratio, scrollable when wider than viewport ── */}
       <div
         ref={boardRef}
-        className="relative isolate h-full"
+        className="relative isolate"
         style={{
-          width: "max(100vw, calc(80vh * 16 / 9))",
-          minWidth: "max(100vw, calc(80vh * 16 / 9))",
+          width: boardWidth > 0 ? `${boardWidth}px` : "100vw",
+          height: "100%",
           backgroundColor: "#122018",
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E")`,
         }}
@@ -905,10 +919,27 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, isSel
   const offset = useRef({ x: 0, y: 0 })
   const pos = useRef({ x: note.position.x, y: note.position.y })
 
+  // Clamp position to board bounds
+  const clampedPos = useCallback(() => {
+    const noteSize = note.shape === "heart" ? 288 : 256
+    if (!boardRef.current) return { x: note.position.x, y: note.position.y }
+    const bw = boardRef.current.offsetWidth
+    const bh = boardRef.current.offsetHeight
+    return {
+      x: Math.max(0, Math.min(note.position.x, bw - noteSize)),
+      y: Math.max(0, Math.min(note.position.y, bh - noteSize)),
+    }
+  }, [note.position.x, note.position.y, note.shape, boardRef])
+
   // Sync position from props when not dragging
   useEffect(() => {
-    pos.current = { x: note.position.x, y: note.position.y }
-  }, [note.position.x, note.position.y])
+    const c = clampedPos()
+    pos.current = c
+    if (elRef.current) {
+      elRef.current.style.left = `${c.x}px`
+      elRef.current.style.top = `${c.y}px`
+    }
+  }, [clampedPos])
 
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768
   const touchStart = useRef<{ x: number; y: number; time: number } | null>(null)
@@ -1016,8 +1047,8 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, isSel
       onContextMenu={handleContextMenu}
       className={`group absolute select-none ${isSelected ? "cursor-grabbing" : "cursor-grab"} active:cursor-grabbing`}
       style={{
-        left: note.position.x,
-        top: note.position.y,
+        left: clampedPos().x,
+        top: clampedPos().y,
         zIndex: isDragging || isSelected ? 999 : note.zIndex,
         touchAction: isSelected ? "none" : "auto",
         outline: isSelected ? "3px solid rgba(255,255,255,0.7)" : undefined,
