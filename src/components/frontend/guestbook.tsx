@@ -496,7 +496,7 @@ export function Guestbook() {
   const [selectedNoteId, setSelectedNoteId] = useState<number | null>(null)
 
   return (
-    <div className="relative h-screen w-screen overflow-x-auto overflow-y-hidden">
+    <div className="relative h-screen w-screen overflow-x-auto overflow-y-hidden" style={{ backgroundColor: "#122018" }}>
       {/* ── Fixed header bar ── */}
       <div className="fixed top-0 left-0 right-0 z-60 flex h-14 items-center justify-between px-6">
         {/* Club name (left) */}
