@@ -496,72 +496,132 @@ export function Guestbook() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
-      {/* ── Club name (top-left) ── */}
-      <Link
-        href="/"
-        className="fixed top-4 left-6 z-60 text-xl font-bold tracking-tight text-white/80 transition-colors hover:text-white"
-      >
-        CLUB NAME
-      </Link>
+      {/* ── Fixed header bar ── */}
+      <div className="fixed top-0 left-0 right-0 z-60 flex h-14 items-center justify-between px-6">
+        {/* Club name (left) */}
+        <Link
+          href="/"
+          className="text-xl font-bold tracking-tight text-white/80 transition-colors hover:text-white"
+        >
+          CLUB NAME
+        </Link>
 
-      {/* ── Menu icon (top-right) ── */}
-      <button
-        onClick={() => setNavOpen((v) => !v)}
-        className="fixed top-4 right-4 z-60 flex h-10 w-10 cursor-pointer items-center justify-center text-white backdrop-blur-md"
-      >
-        <Menu className="h-6 w-6 transition-all duration-200 hover:size-7" />
-      </button>
-
-      {/* ── Full-height sidebar nav (slides from right) ── */}
-      <AnimatePresence>
-        {navOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-60 bg-black/40"
-              onClick={() => setNavOpen(false)}
-            />
-            {/* Sidebar — w-1/4, min-w-50 for adjustability */}
-            <motion.nav
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="fixed top-0 right-0 bottom-0 z-60 flex w-1/4 min-w-50 flex-col bg-white/10 backdrop-blur-xl"
-            >
-              {/* Close button */}
-              <div className="flex justify-end p-4">
-                <button
-                  onClick={() => setNavOpen(false)}
-                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-white/60"
-                >
-                  <X className="h-6 w-6 transition-all duration-200 hover:size-7" />
-                </button>
-              </div>
-
-              {/* Nav links */}
-              <div className="flex flex-1 flex-col gap-1 px-4">
+        {/* Desktop: inline nav items that fade in + menu btn */}
+        <div className="hidden items-center gap-6 md:flex">
+          <AnimatePresence>
+            {navOpen && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.25 }}
+                className="flex items-center gap-6"
+              >
                 {[
                   { label: "首頁", href: "/" },
                   { label: "成員", href: "/members" },
                   { label: "畫廊", href: "/gallery" },
                   { label: "簽到簿", href: "/sign-book" },
-                ].map((item) => (
-                  <Link
+                ].map((item, i) => (
+                  <motion.div
                     key={item.href}
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 + 0.1 }}
+                  >
+                    <Link
+                      href={item.href}
+                      className="text-sm font-medium text-white/70 transition-colors hover:text-white"
+                    >
+                      {item.label}
+                    </Link>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Hamburger / X button */}
+          <button
+            onClick={() => setNavOpen((v) => !v)}
+            className="flex h-8 w-8 cursor-pointer flex-col items-end justify-center gap-1.5"
+          >
+            <motion.span
+              animate={{ backgroundColor: "white", rotate: navOpen ? 45 : 0, y: navOpen ? 8 : 0, width: navOpen ? 24 : 24 }}
+              transition={{ duration: 0.25 }}
+              className="h-0.5 w-6 rounded-full"
+            />
+            <motion.span
+              animate={{ backgroundColor: "white", opacity: navOpen ? 0 : 1, scaleX: navOpen ? 0 : 1 }}
+              transition={{ duration: 0.2 }}
+              className="h-0.5 w-6 rounded-full"
+            />
+            <motion.span
+              animate={{ backgroundColor: "white", rotate: navOpen ? -45 : 0, y: navOpen ? -8 : 0, width: navOpen ? 24 : 16 }}
+              transition={{ duration: 0.25 }}
+              className="h-0.5 w-4 rounded-full"
+            />
+          </button>
+        </div>
+
+        {/* Mobile: hamburger + dropdown */}
+        <div className="flex items-center md:hidden">
+          <button
+            onClick={() => setNavOpen((v) => !v)}
+            className="relative z-50 flex h-8 w-8 cursor-pointer flex-col items-end justify-center gap-1.5"
+          >
+            <motion.span
+              animate={{ backgroundColor: "white", rotate: navOpen ? 45 : 0, y: navOpen ? 8 : 0, width: 24 }}
+              transition={{ duration: 0.25 }}
+              className="h-0.5 w-6 rounded-full"
+            />
+            <motion.span
+              animate={{ backgroundColor: "white", opacity: navOpen ? 0 : 1, scaleX: navOpen ? 0 : 1 }}
+              transition={{ duration: 0.2 }}
+              className="h-0.5 w-6 rounded-full"
+            />
+            <motion.span
+              animate={{ backgroundColor: "white", rotate: navOpen ? -45 : 0, y: navOpen ? -8 : 0, width: navOpen ? 24 : 16 }}
+              transition={{ duration: 0.25 }}
+              className="h-0.5 w-4 rounded-full"
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile dropdown nav */}
+      <AnimatePresence>
+        {navOpen && (
+          <motion.nav
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="fixed top-14 left-0 right-0 z-50 overflow-hidden border-t border-white/10 bg-black/60 backdrop-blur-xl md:hidden"
+          >
+            <div className="flex flex-col px-6 py-4">
+              {[
+                { label: "首頁", href: "/" },
+                { label: "成員", href: "/members" },
+                { label: "畫廊", href: "/gallery" },
+                { label: "簽到簿", href: "/sign-book" },
+              ].map((item, i) => (
+                <motion.div
+                  key={item.href}
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: i * 0.05 + 0.1, duration: 0.25 }}
+                >
+                  <Link
                     href={item.href}
-                    className="rounded-lg px-4 py-3 text-base font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                    className="block py-3 text-lg font-medium text-white/80 transition-colors active:text-white"
                   >
                     {item.label}
                   </Link>
-                ))}
-              </div>
-            </motion.nav>
-          </>
+                </motion.div>
+              ))}
+            </div>
+          </motion.nav>
         )}
       </AnimatePresence>
 
@@ -593,7 +653,7 @@ export function Guestbook() {
       {/* ── Full-screen Blackboard ── */}
       <div
         ref={boardRef}
-        className="relative h-full w-full"
+        className="relative isolate h-full w-full"
         style={{
           backgroundColor: "#122018",
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E")`,
@@ -911,7 +971,7 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
       style={{
         left: note.position.x,
         top: note.position.y,
-        zIndex: isDragging ? 9999 : note.zIndex,
+        zIndex: isDragging ? 999 : note.zIndex,
         touchAction: "none",
       }}
     >
