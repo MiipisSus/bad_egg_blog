@@ -1016,7 +1016,12 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, isSel
     if (!dragging.current) return
     dragging.current = false
     elRef.current?.releasePointerCapture(e.pointerId)
-    onDragEnd(note.id, pos.current.x, pos.current.y)
+    // Convert back to reference coordinates (1920x1080) for storage
+    const bw = boardRef.current?.offsetWidth || REF_W
+    const bh = boardRef.current?.offsetHeight || REF_H
+    const storeX = pos.current.x / (bw / REF_W)
+    const storeY = pos.current.y / (bh / REF_H)
+    onDragEnd(note.id, storeX, storeY)
   }, [note.id, onDragEnd, isMobile, isSelected, onSelect])
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
@@ -1058,7 +1063,6 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, isSel
         touchAction: isSelected ? "none" : "auto",
         outline: isSelected ? "3px solid rgba(255,255,255,0.7)" : undefined,
         outlineOffset: isSelected ? "4px" : undefined,
-        borderRadius: isSelected ? "4px" : undefined,
       }}
     >
       {note.noteType === "bubble" ? (
