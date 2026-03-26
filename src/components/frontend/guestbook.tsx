@@ -493,9 +493,10 @@ export function Guestbook() {
   }, [bubbleText, bubbleColor, authorName, currentPage, pages, pageIds])
 
   const [navOpen, setNavOpen] = useState(false)
+  const [selectedNoteId, setSelectedNoteId] = useState<number | null>(null)
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden">
+    <div className="relative h-screen w-screen overflow-x-auto overflow-y-hidden">
       {/* ── Fixed header bar ── */}
       <div className="fixed top-0 left-0 right-0 z-60 flex h-14 items-center justify-between px-6">
         {/* Club name (left) */}
@@ -651,13 +652,18 @@ export function Guestbook() {
       </svg>
 
       {/* ── Full-screen Blackboard ── */}
+      {/* ── Blackboard — 16:9 min ratio, scrollable when wider than viewport ── */}
       <div
         ref={boardRef}
-        className="relative isolate h-full w-full"
+        className="relative isolate h-full"
         style={{
+          minWidth: "max(100vw, calc(80vh * 16 / 9))",
           backgroundColor: "#122018",
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E")`,
-          boxShadow: "inset 0 0 80px rgba(0,0,0,0.5)",
+        }}
+        onPointerDown={(e) => {
+          if ((e.target as HTMLElement).closest("[data-sticky-note], .group")) return
+          setSelectedNoteId(null)
         }}
       >
         {/* Outline canvas — behind everything */}
@@ -689,6 +695,8 @@ export function Guestbook() {
                 boardRef={boardRef}
                 isOwned={note.visitorId === getVisitorId()}
                 isDragging={draggedId === note.id}
+                isSelected={selectedNoteId === note.id}
+                onSelect={(id) => setSelectedNoteId(id)}
                 onDragStart={() => setDraggedId(note.id)}
                 onDragEnd={handleDragEnd}
                 onDelete={handleDelete}
@@ -698,75 +706,74 @@ export function Guestbook() {
         </AnimatePresence>
       </div>
 
-      {/* ── Fixed bottom control bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center px-6 backdrop-blur-md">
-        {/* Left spacer */}
-        <div className="flex flex-1" />
-
-        {/* Pagination dots — centered */}
-        <div className={`flex items-center gap-2 ${totalPages <= 1 ? "invisible" : ""}`}>
-          <button
-            onClick={() => setCurrentPage((p) => (p - 1 + totalPages) % totalPages)}
-            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-white/50 transition-colors hover:text-white"
+      {/* Mobile: selected note action bar */}
+      <AnimatePresence>
+        {selectedNoteId !== null && (
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 20, opacity: 0 }}
+            className="fixed bottom-24 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4 rounded-full bg-white/90 px-6 py-3 shadow-lg backdrop-blur-md md:hidden"
           >
+            {pageNotes.find((n) => n.id === selectedNoteId && n.visitorId === getVisitorId()) && (
+              <button
+                onClick={() => { handleDelete(selectedNoteId!); setSelectedNoteId(null) }}
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-red-500/10 text-red-500 transition-colors hover:bg-red-500/20"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
+            <button
+              onClick={() => setSelectedNoteId(null)}
+              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-green-500/10 text-green-600 transition-colors hover:bg-green-500/20"
+            >
+              <Check className="h-5 w-5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Fixed bottom control bar — Desktop: single row ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 hidden h-16 items-center px-6 backdrop-blur-md md:flex">
+        <div className="flex flex-1" />
+        <div className={`flex items-center gap-2 ${totalPages <= 1 ? "invisible" : ""}`}>
+          <button onClick={() => setCurrentPage((p) => (p - 1 + totalPages) % totalPages)} className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-white/50 transition-colors hover:text-white">
             <ChevronLeft className="h-4 w-4" />
           </button>
           {Array.from({ length: Math.max(totalPages, 1) }, (_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentPage(i)}
-              className={`h-2.5 w-2.5 cursor-pointer rounded-full transition-all ${
-                i === currentPage ? "scale-125 bg-white" : "bg-white/30"
-              }`}
-            />
+            <button key={i} onClick={() => setCurrentPage(i)} className={`h-2.5 w-2.5 cursor-pointer rounded-full transition-all ${i === currentPage ? "scale-125 bg-white" : "bg-white/30"}`} />
           ))}
-          <button
-            onClick={() => setCurrentPage((p) => (p + 1) % totalPages)}
-            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-white/50 transition-colors hover:text-white"
-          >
+          <button onClick={() => setCurrentPage((p) => (p + 1) % totalPages)} className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-white/50 transition-colors hover:text-white">
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex flex-1 items-center justify-end gap-3">
+          <button onClick={handleAddPage} disabled={!canAddPage} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/20 px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30">追加畫布</button>
+          <button onClick={() => { if (pages[currentPage].length >= PAGE_HARD_LIMIT) { setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！"); setTimeout(() => setHint(null), 3000); return }; setIsModalOpen(true) }} className="flex cursor-pointer items-center gap-1.5 rounded-full bg-white/90 px-5 py-2 text-sm font-medium text-neutral-900 transition-colors hover:bg-white"><Plus className="h-4 w-4" />便利貼</button>
+          <button onClick={() => { if (pages[currentPage].length >= PAGE_HARD_LIMIT) { setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！"); setTimeout(() => setHint(null), 3000); return }; setIsBubbleModalOpen(true) }} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/30 px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"><MessageCircle className="h-4 w-4" />留言</button>
+        </div>
+      </div>
+
+      {/* ── Fixed bottom control bar — Mobile: two rows, centered ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col items-center gap-2 px-4 py-3 backdrop-blur-md md:hidden">
+        {/* Row 1: pagination dots + arrows */}
+        <div className={`flex items-center gap-2 ${totalPages <= 1 ? "invisible" : ""}`}>
+          <button onClick={() => setCurrentPage((p) => (p - 1 + totalPages) % totalPages)} className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-white/50 transition-colors hover:text-white">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          {Array.from({ length: Math.max(totalPages, 1) }, (_, i) => (
+            <button key={i} onClick={() => setCurrentPage(i)} className={`h-2.5 w-2.5 cursor-pointer rounded-full transition-all ${i === currentPage ? "scale-125 bg-white" : "bg-white/30"}`} />
+          ))}
+          <button onClick={() => setCurrentPage((p) => (p + 1) % totalPages)} className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-white/50 transition-colors hover:text-white">
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Right side — buttons */}
-        <div className="flex flex-1 items-center justify-end gap-3">
-          <button
-            onClick={handleAddPage}
-            disabled={!canAddPage}
-            className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/20 px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
-          >
-            追加畫布
-          </button>
-
-          <button
-            onClick={() => {
-              if (pages[currentPage].length >= PAGE_HARD_LIMIT) {
-                setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！")
-                setTimeout(() => setHint(null), 3000)
-                return
-              }
-              setIsModalOpen(true)
-            }}
-            className="flex cursor-pointer items-center gap-1.5 rounded-full bg-white/90 px-5 py-2 text-sm font-medium text-neutral-900 transition-colors hover:bg-white"
-          >
-            <Plus className="h-4 w-4" />
-            便利貼
-          </button>
-
-          <button
-            onClick={() => {
-              if (pages[currentPage].length >= PAGE_HARD_LIMIT) {
-                setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！")
-                setTimeout(() => setHint(null), 3000)
-                return
-              }
-              setIsBubbleModalOpen(true)
-            }}
-            className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/30 px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
-          >
-            <MessageCircle className="h-4 w-4" />
-            留言
-          </button>
+        {/* Row 2: action buttons */}
+        <div className="flex items-center justify-center gap-2">
+          <button onClick={handleAddPage} disabled={!canAddPage} className="flex cursor-pointer items-center gap-1 rounded-full border border-white/20 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30">追加畫布</button>
+          <button onClick={() => { if (pages[currentPage].length >= PAGE_HARD_LIMIT) { setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！"); setTimeout(() => setHint(null), 3000); return }; setIsModalOpen(true) }} className="flex cursor-pointer items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-neutral-900 transition-colors hover:bg-white"><Plus className="h-3.5 w-3.5" />便利貼</button>
+          <button onClick={() => { if (pages[currentPage].length >= PAGE_HARD_LIMIT) { setHint("該頁便利貼數已達上限（15張），請切換到其他頁面或追加新畫布！"); setTimeout(() => setHint(null), 3000); return }; setIsBubbleModalOpen(true) }} className="flex cursor-pointer items-center gap-1 rounded-full border border-white/30 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"><MessageCircle className="h-3.5 w-3.5" />留言</button>
         </div>
       </div>
 
@@ -882,12 +889,14 @@ interface DraggableStickyNoteProps {
   boardRef: React.RefObject<HTMLDivElement | null>
   isOwned: boolean
   isDragging: boolean
+  isSelected: boolean
+  onSelect: (id: number | null) => void
   onDragStart: () => void
   onDragEnd: (id: number, x: number, y: number) => void
   onDelete: (id: number) => void
 }
 
-function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDragStart, onDragEnd, onDelete }: DraggableStickyNoteProps) {
+function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, isSelected, onSelect, onDragStart, onDragEnd, onDelete }: DraggableStickyNoteProps) {
   const elRef = useRef<HTMLDivElement>(null)
   const dragging = useRef(false)
   const [showContextMenu, setShowContextMenu] = useState(false)
@@ -900,8 +909,31 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
     pos.current = { x: note.position.x, y: note.position.y }
   }, [note.position.x, note.position.y])
 
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768
+  const touchStart = useRef<{ x: number; y: number; time: number } | null>(null)
+
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (!elRef.current || !boardRef.current) return
+
+    if (isMobile) {
+      // Don't prevent default — allow scroll to happen naturally
+      touchStart.current = { x: e.clientX, y: e.clientY, time: Date.now() }
+
+      if (isSelected) {
+        // Already selected: start drag
+        e.preventDefault()
+        e.stopPropagation()
+        dragging.current = true
+        onDragStart()
+        const rect = elRef.current.getBoundingClientRect()
+        offset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+        elRef.current.setPointerCapture(e.pointerId)
+      }
+      // If not selected, we wait for pointerUp to decide if it's a tap
+      return
+    }
+
+    // Desktop: immediate drag
     e.preventDefault()
     e.stopPropagation()
     dragging.current = true
@@ -910,7 +942,7 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
     const rect = elRef.current.getBoundingClientRect()
     offset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
     elRef.current.setPointerCapture(e.pointerId)
-  }, [boardRef, onDragStart])
+  }, [boardRef, onDragStart, isMobile, isSelected])
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragging.current || !elRef.current || !boardRef.current) return
@@ -930,11 +962,25 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
   }, [boardRef])
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    // Mobile: check if this was a tap (not a scroll)
+    if (isMobile && touchStart.current && !dragging.current) {
+      const dx = Math.abs(e.clientX - touchStart.current.x)
+      const dy = Math.abs(e.clientY - touchStart.current.y)
+      const dt = Date.now() - touchStart.current.time
+      touchStart.current = null
+      // Short tap with little movement → select
+      if (dx < 10 && dy < 10 && dt < 300) {
+        onSelect(isSelected ? null : note.id)
+      }
+      return
+    }
+    touchStart.current = null
+
     if (!dragging.current) return
     dragging.current = false
     elRef.current?.releasePointerCapture(e.pointerId)
     onDragEnd(note.id, pos.current.x, pos.current.y)
-  }, [note.id, onDragEnd])
+  }, [note.id, onDragEnd, isMobile, isSelected, onSelect])
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -967,12 +1013,15 @@ function DraggableStickyNote({ note, index, boardRef, isOwned, isDragging, onDra
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onContextMenu={handleContextMenu}
-      className="group absolute cursor-grab select-none active:cursor-grabbing"
+      className={`group absolute select-none ${isSelected ? "cursor-grabbing" : "cursor-grab"} active:cursor-grabbing`}
       style={{
         left: note.position.x,
         top: note.position.y,
-        zIndex: isDragging ? 999 : note.zIndex,
-        touchAction: "none",
+        zIndex: isDragging || isSelected ? 999 : note.zIndex,
+        touchAction: isSelected ? "none" : "auto",
+        outline: isSelected ? "3px solid rgba(255,255,255,0.7)" : undefined,
+        outlineOffset: isSelected ? "4px" : undefined,
+        borderRadius: isSelected ? "4px" : undefined,
       }}
     >
       {note.noteType === "bubble" ? (
