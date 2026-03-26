@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
 function useSwipe(onLeft: () => void, onRight: () => void, threshold = 50) {
@@ -32,6 +32,7 @@ interface BannerData {
 export function Hero() {
   const [banners, setBanners] = useState<BannerData[]>(FALLBACK_IMAGES)
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [direction, setDirection] = useState(1) // 1 = forward (right to left), -1 = backward
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -49,6 +50,7 @@ export function Hero() {
     if (timerRef.current) clearInterval(timerRef.current)
     if (banners.length <= 1) return
     timerRef.current = setInterval(() => {
+      setDirection(1)
       setCurrentSlide((prev) => (prev + 1) % banners.length)
     }, 5000)
   }, [banners.length])
@@ -59,16 +61,19 @@ export function Hero() {
   }, [resetTimer])
 
   const nextSlide = () => {
+    setDirection(1)
     setCurrentSlide((prev) => (prev + 1) % banners.length)
     resetTimer()
   }
 
   const prevSlide = () => {
+    setDirection(-1)
     setCurrentSlide((prev) => (prev - 1 + banners.length) % banners.length)
     resetTimer()
   }
 
   const goToSlide = (index: number) => {
+    setDirection(index > currentSlide ? 1 : -1)
     setCurrentSlide(index)
     resetTimer()
   }
@@ -82,20 +87,28 @@ export function Hero() {
         className="relative w-full h-[calc(100vh-4rem)] overflow-hidden rounded-b-xl"
         {...heroSwipe}
       >
-        <div
-          className="flex h-full transition-transform duration-500 ease-out"
-          style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-        >
-          {banners.map((banner) => (
-            <div key={banner.id} className="relative w-full h-full shrink-0 bg-muted">
-              <img
-                src={banner.image}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            </div>
-          ))}
-        </div>
+        <AnimatePresence initial={false} custom={direction} mode="popLayout">
+          <motion.div
+            key={currentSlide}
+            custom={direction}
+            variants={{
+              enter: (d: number) => ({ x: d > 0 ? "100%" : "-100%" }),
+              center: { x: 0 },
+              exit: (d: number) => ({ x: d > 0 ? "-100%" : "100%" }),
+            }}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+            className="absolute inset-0 bg-muted"
+          >
+            <img
+              src={banners[currentSlide].image}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </motion.div>
+        </AnimatePresence>
 
         {/* Navigation Buttons */}
         {banners.length > 1 && (
