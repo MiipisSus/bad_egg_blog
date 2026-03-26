@@ -95,19 +95,19 @@ export function Activities() {
         </h2>
       </motion.div>
 
-      {/* Content: Left Dots + Right Image */}
+      {/* Content */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.2 }}
         transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
-        className="flex min-h-[80vh] w-[85dvw] items-stretch px-6 mx-auto md:px-12">
-        {/* Left Side: Vertical Decorative Elements */}
-        <div className="flex w-12 flex-col items-center justify-center md:w-20">
+        className="flex w-[85dvw] flex-col items-stretch px-6 mx-auto md:min-h-[80vh] md:flex-row md:px-12"
+      >
+        {/* Desktop: Left Side Vertical Dots */}
+        <div className="hidden w-20 flex-col items-center justify-center md:flex">
           <ul className="flex flex-col items-center gap-0">
             {activities.map((activity, index) => (
               <li key={activity.id} className="flex flex-col items-center">
-                {/* Geometric Shape - Dot */}
                 <button
                   onClick={() => handleDotClick(index)}
                   className="group relative flex h-10 w-10 cursor-pointer items-center justify-center"
@@ -121,7 +121,6 @@ export function Activities() {
                     transition={{ type: "spring", stiffness: 400, damping: 25 }}
                     className={`relative h-3 w-3 rounded-full ${MACARON_COLORS[index % MACARON_COLORS.length]} transition-colors duration-300`}
                   >
-                    {/* Active Glow Effect */}
                     {activeIndex === index && (
                       <motion.div
                         initial={{ opacity: 0, scale: 0.5 }}
@@ -131,72 +130,102 @@ export function Activities() {
                     )}
                   </motion.div>
                 </button>
-                
-                {/* Connector Line (vertical dash) */}
                 {index < activities.length - 1 && (
-                  <div className="my-4 h-10 w-px bg-border/50 md:my-5 md:h-12" />
+                  <div className="my-5 h-12 w-px bg-border/50" />
                 )}
               </li>
             ))}
           </ul>
         </div>
 
-        {/* Right Side: Large Image Container with photo frame */}
-        <div className="relative flex-1 bg-white p-3 shadow-md" {...activitySwipe}>
+        {/* Image Container */}
+        <div className="relative aspect-[4/3] w-full bg-white p-3 shadow-md md:aspect-auto md:flex-1" {...activitySwipe}>
           <div className="relative h-full w-full overflow-hidden border border-slate-100">
-          <AnimatePresence initial={false} custom={direction}>
-            <motion.div
-              key={activeActivity.id}
-              custom={direction}
-              variants={{
-                enter: (d: number) => ({ y: d > 0 ? "100%" : "-100%" }),
-                center: { y: 0 },
-                exit: (d: number) => ({ y: d > 0 ? "-100%" : "100%" }),
-              }}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-              className={`absolute inset-0 ${MACARON_COLORS[activeIndex % MACARON_COLORS.length]}`}
-            >
-              {/* Background image */}
-              <img
-                src={activeActivity.image}
-                alt={activeActivity.title}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-              <div className="absolute inset-0 bg-black/20" />
+            <AnimatePresence initial={false} custom={direction} mode="popLayout">
+              <motion.div
+                key={activeActivity.id}
+                custom={direction}
+                variants={{
+                  enter: (d: number) => ({
+                    // Mobile: left/right, Desktop: top/bottom
+                    x: typeof window !== "undefined" && window.innerWidth < 768 ? (d > 0 ? "100%" : "-100%") : 0,
+                    y: typeof window !== "undefined" && window.innerWidth < 768 ? 0 : (d > 0 ? "100%" : "-100%"),
+                  }),
+                  center: { x: 0, y: 0 },
+                  exit: (d: number) => ({
+                    x: typeof window !== "undefined" && window.innerWidth < 768 ? (d > 0 ? "-100%" : "100%") : 0,
+                    y: typeof window !== "undefined" && window.innerWidth < 768 ? 0 : (d > 0 ? "-100%" : "100%"),
+                  }),
+                }}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+                className={`absolute inset-0 ${MACARON_COLORS[activeIndex % MACARON_COLORS.length]}`}
+              >
+                <img
+                  src={activeActivity.image}
+                  alt={activeActivity.title}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/20" />
 
-              {/* Backdrop Blur Text Box - Bottom Left */}
-              <div className="absolute bottom-4 left-4 right-4 md:bottom-8 md:left-8 md:right-auto md:max-w-lg">
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15, duration: 0.35 }}
-                  className="rounded-2xl bg-white/70 p-5 shadow-lg backdrop-blur-md md:rounded-3xl md:p-8"
-                >
-                  <h3 className="text-lg font-semibold text-foreground md:text-2xl">
-                    {activeActivity.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground md:mt-3 md:text-base" style={{ fontFamily: "var(--font-huninn)" }}>
-                    {activeActivity.description}
-                  </p>
-                  
-                  {/* Activity Number Indicator */}
-                  <div className="mt-4 flex items-center gap-3 md:mt-5">
-                    <span className="text-xs font-semibold text-foreground/70">
-                      {String(activeIndex + 1).padStart(2, "0")}
-                    </span>
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {String(activities.length).padStart(2, "0")}
-                    </span>
-                  </div>
-                </motion.div>
-              </div>
-            </motion.div>
-          </AnimatePresence>
+                {/* Text Box */}
+                <div className="absolute bottom-4 left-4 right-4 md:bottom-8 md:left-8 md:right-auto md:max-w-lg">
+                  <motion.div
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15, duration: 0.35 }}
+                    className="rounded-2xl bg-white/70 p-4 shadow-lg backdrop-blur-md md:rounded-3xl md:p-8"
+                  >
+                    <h3 className="text-base font-semibold text-foreground md:text-2xl">
+                      {activeActivity.title}
+                    </h3>
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground md:mt-3 md:text-base" style={{ fontFamily: "var(--font-huninn)" }}>
+                      {activeActivity.description}
+                    </p>
+                    <div className="mt-3 flex items-center gap-3 md:mt-5">
+                      <span className="text-xs font-semibold text-foreground/70">
+                        {String(activeIndex + 1).padStart(2, "0")}
+                      </span>
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {String(activities.length).padStart(2, "0")}
+                      </span>
+                    </div>
+                  </motion.div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
           </div>
+        </div>
+
+        {/* Mobile: Horizontal Dots below image */}
+        <div className="flex items-center justify-center gap-3 py-4 md:hidden">
+          {activities.map((activity, index) => (
+            <button
+              key={activity.id}
+              onClick={() => handleDotClick(index)}
+              className="relative flex h-8 w-8 cursor-pointer items-center justify-center"
+            >
+              <motion.div
+                animate={{
+                  scale: activeIndex === index ? 1.3 : 0.8,
+                  opacity: activeIndex === index ? 1 : 0.35,
+                }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                className={`h-3 w-3 rounded-full ${MACARON_COLORS[index % MACARON_COLORS.length]}`}
+              >
+                {activeIndex === index && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 0.6, scale: 2.5 }}
+                    className={`absolute inset-0 rounded-full ${MACARON_COLORS[index % MACARON_COLORS.length]} blur-md`}
+                  />
+                )}
+              </motion.div>
+            </button>
+          ))}
         </div>
       </motion.div>
     </section>

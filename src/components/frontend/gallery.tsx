@@ -222,7 +222,20 @@ function FilterBar({
   )
 }
 
-const COLUMN_COUNT = 3
+const COLUMN_COUNT_DESKTOP = 3
+const COLUMN_COUNT_MOBILE = 1
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)")
+    setIsMobile(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener("change", handler)
+    return () => mq.removeEventListener("change", handler)
+  }, [])
+  return isMobile
+}
 
 function MasonryGrid({
   photos,
@@ -231,21 +244,23 @@ function MasonryGrid({
   photos: GalleryPhoto[]
   onOpen: (photo: GalleryPhoto, index: number) => void
 }) {
-  // Distribute photos row-first: [1,2,3] → col0,col1,col2, [4,5,6] → col0,col1,col2...
+  const isMobile = useIsMobile()
+  const columnCount = isMobile ? COLUMN_COUNT_MOBILE : COLUMN_COUNT_DESKTOP
+
   const columns = useMemo(() => {
-    const cols: GalleryPhoto[][] = Array.from({ length: COLUMN_COUNT }, () => [])
+    const cols: GalleryPhoto[][] = Array.from({ length: columnCount }, () => [])
     photos.forEach((photo, i) => {
-      cols[i % COLUMN_COUNT].push(photo)
+      cols[i % columnCount].push(photo)
     })
     return cols
-  }, [photos])
+  }, [photos, columnCount])
 
   return (
-    <div className="flex gap-x-8">
+    <div className={cn("flex", isMobile ? "flex-col px-4" : "gap-x-8")}>
       {columns.map((col, colIndex) => (
         <div key={colIndex} className="flex flex-1 flex-col">
           {col.map((photo) => (
-            <GalleryCard key={photo.id} photo={photo} onOpen={onOpen} />
+            <GalleryCard key={photo.id} photo={photo} onOpen={onOpen} isMobile={isMobile} />
           ))}
         </div>
       ))}
@@ -256,9 +271,11 @@ function MasonryGrid({
 function GalleryCard({
   photo,
   onOpen,
+  isMobile = false,
 }: {
   photo: GalleryPhoto
   onOpen: (photo: GalleryPhoto, index: number) => void
+  isMobile?: boolean
 }) {
   const [isLoaded, setIsLoaded] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -295,12 +312,13 @@ function GalleryCard({
     return ((seed % 4001) / 1000) - 2
   }, [photo.id])
 
+  // Desktop: hover to cycle images
   const handleMouseEnter = useCallback(() => {
-    if (photo.images.length <= 1) return
+    if (isMobile || photo.images.length <= 1) return
     timerRef.current = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % photo.images.length)
     }, 1500)
-  }, [photo.images.length])
+  }, [isMobile, photo.images.length])
 
   const handleMouseLeave = useCallback(() => {
     if (timerRef.current) {
@@ -309,6 +327,43 @@ function GalleryCard({
     }
     setCurrentIndex(0)
   }, [])
+
+  // Mobile: auto-cycle images when card is in viewport via ScrollTrigger
+  useEffect(() => {
+    if (!isMobile || photo.images.length <= 1 || !cardRef.current) return
+
+    const el = cardRef.current
+    let interval: ReturnType<typeof setInterval> | null = null
+
+    const trigger = ScrollTrigger.create({
+      trigger: el,
+      start: "top 80%",
+      end: "bottom 20%",
+      onEnter: () => {
+        interval = setInterval(() => {
+          setCurrentIndex((prev) => (prev + 1) % photo.images.length)
+        }, 1500)
+      },
+      onLeave: () => {
+        if (interval) { clearInterval(interval); interval = null }
+        setCurrentIndex(0)
+      },
+      onEnterBack: () => {
+        interval = setInterval(() => {
+          setCurrentIndex((prev) => (prev + 1) % photo.images.length)
+        }, 1500)
+      },
+      onLeaveBack: () => {
+        if (interval) { clearInterval(interval); interval = null }
+        setCurrentIndex(0)
+      },
+    })
+
+    return () => {
+      if (interval) clearInterval(interval)
+      trigger.kill()
+    }
+  }, [isMobile, photo.images.length])
 
   useEffect(() => {
     return () => {
@@ -463,6 +518,25 @@ function GalleryModal({
     return () => window.removeEventListener("keydown", handleKey)
   }, [onClose, goNext, goPrev])
 
+  // Touch swipe navigation
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+  }, [])
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return
+    const dx = e.changedTouches[0].clientX - touchStartRef.current.x
+    const dy = e.changedTouches[0].clientY - touchStartRef.current.y
+    touchStartRef.current = null
+    // Only trigger if horizontal swipe is dominant and exceeds threshold
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) goNext()
+      else goPrev()
+    }
+  }, [goNext, goPrev])
+
   // Lock body scroll
   useEffect(() => {
     document.body.style.overflow = "hidden"
@@ -473,6 +547,8 @@ function GalleryModal({
     <div
       className="fixed inset-0 z-100 bg-black/80 backdrop-blur-sm"
       onClick={onClose}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {/* Close button - fixed to screen top-right */}
       <button
@@ -486,9 +562,10 @@ function GalleryModal({
       <div className="pointer-events-none fixed inset-0 flex flex-col items-center justify-center">
         {/* Polaroid animation area */}
         <div
-          className="relative"
+          className="relative max-md:w-[90vw]"
           style={{
             height: "70vh",
+            maxHeight: "90vw",
             aspectRatio: `${photo.width}/${photo.height}`,
           }}
         >
@@ -604,9 +681,9 @@ function MasonrySkeleton() {
   ]
 
   // Same row-first distribution as MasonryGrid
-  const columns: (typeof items)[] = Array.from({ length: COLUMN_COUNT }, () => [])
+  const columns: (typeof items)[] = Array.from({ length: COLUMN_COUNT_DESKTOP }, () => [])
   items.forEach((item, i) => {
-    columns[i % COLUMN_COUNT].push(item)
+    columns[i % COLUMN_COUNT_DESKTOP].push(item)
   })
 
   return (
