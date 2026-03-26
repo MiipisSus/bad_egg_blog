@@ -4,6 +4,19 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { motion } from "framer-motion"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
+function useSwipe(onLeft: () => void, onRight: () => void, threshold = 50) {
+  const startX = useRef(0)
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    startX.current = e.touches[0].clientX
+  }, [])
+  const onTouchEnd = useCallback((e: React.TouchEvent) => {
+    const diff = e.changedTouches[0].clientX - startX.current
+    if (diff < -threshold) onLeft()
+    else if (diff > threshold) onRight()
+  }, [onLeft, onRight, threshold])
+  return { onTouchStart, onTouchEnd }
+}
+
 // Fallback when no banners from API
 const FALLBACK_IMAGES = [
   { id: 1, image: "https://picsum.photos/seed/hero1/1920/1080" },
@@ -60,10 +73,15 @@ export function Hero() {
     resetTimer()
   }
 
+  const heroSwipe = useSwipe(nextSlide, prevSlide)
+
   return (
     <section className="relative w-full min-h-screen">
       {/* Full-width Carousel */}
-      <div className="relative w-full h-[calc(100vh-4rem)] overflow-hidden rounded-b-xl">
+      <div
+        className="relative w-full h-[calc(100vh-4rem)] overflow-hidden rounded-b-xl"
+        {...heroSwipe}
+      >
         <div
           className="flex h-full transition-transform duration-500 ease-out"
           style={{ transform: `translateX(-${currentSlide * 100}%)` }}

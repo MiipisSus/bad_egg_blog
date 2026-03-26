@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { CreditCard, X } from "lucide-react"
+import { CreditCard, X, ChevronDown } from "lucide-react"
 import type { Member } from "@/types/member"
 
 function useRandomRotations(count: number, range: number) {
@@ -18,8 +18,13 @@ interface LeadershipSectionProps {
 
 export function LeadershipSection({ members }: LeadershipSectionProps) {
   const [hoveredId, setHoveredId] = useState<number | null>(null)
+  const [expandedMobileId, setExpandedMobileId] = useState<number | null>(null)
   const [nameCardUrl, setNameCardUrl] = useState<string | null>(null)
   const rotations = useRandomRotations(members.length, 3)
+
+  const toggleMobile = useCallback((id: number) => {
+    setExpandedMobileId((prev) => (prev === id ? null : id))
+  }, [])
 
   if (members.length === 0) return null
 
@@ -36,7 +41,8 @@ export function LeadershipSection({ members }: LeadershipSectionProps) {
         </div>
       </div>
 
-      <div className="flex flex-1 w-full py-4 overflow-x-clip">
+      {/* ── Desktop: Horizontal Accordion ── */}
+      <div className="hidden w-full flex-1 py-4 overflow-x-clip md:flex" style={{ minHeight: "500px" }}>
         {members.map((leader, index) => {
           const isHovered = hoveredId === leader.id
           const rotation = rotations[index]
@@ -122,6 +128,107 @@ export function LeadershipSection({ members }: LeadershipSectionProps) {
 
                     {leader.bio && (
                       <p className="mt-4 text-sm font-bold leading-relaxed text-white/90" style={{ fontFamily: "var(--font-huninn)" }}>
+                        {leader.bio}
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              </div>
+            </motion.div>
+          )
+        })}
+      </div>
+
+      {/* ── Mobile: Horizontal Accordion (click to expand) ── */}
+      <div className="flex flex-1 w-full py-4 overflow-x-clip md:hidden" style={{ minHeight: "500px" }}>
+        {members.map((leader, index) => {
+          const isExpanded = expandedMobileId === leader.id
+          const rotation = rotations[index]
+
+          return (
+            <motion.div
+              key={leader.id}
+              onClick={() => {
+                if (isExpanded && leader.nameCard) {
+                  setNameCardUrl(leader.nameCard)
+                } else {
+                  toggleMobile(leader.id)
+                }
+              }}
+              animate={{
+                flex: isExpanded ? 5 : 0.3,
+                rotate: isExpanded ? 0 : rotation,
+              }}
+              transition={{ type: "spring", stiffness: 200, damping: 25 }}
+              className="relative cursor-pointer overflow-hidden bg-white p-2 shadow-sm"
+            >
+              <div className="relative h-full w-full overflow-hidden">
+                {leader.image ? (
+                  <motion.img
+                    src={leader.image}
+                    alt={leader.name}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    animate={{ objectPosition: isExpanded ? "center" : "left" }}
+                    transition={{ duration: 0.4, ease: "easeInOut" }}
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-muted" />
+                )}
+                <div className="absolute inset-0 bg-black/40 transition-opacity duration-300" />
+
+                {/* Collapsed State — only role + name, vertical text */}
+                <motion.div
+                  animate={{ opacity: isExpanded ? 0 : 1 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2"
+                >
+                  <span
+                    className="text-center text-sm font-bold leading-tight text-white"
+                    style={{ writingMode: "vertical-rl" }}
+                  >
+                    {leader.name}
+                  </span>
+                  <span
+                    className="text-[10px] text-white/70"
+                    style={{ writingMode: "vertical-rl" }}
+                  >
+                    {leader.role}
+                  </span>
+                </motion.div>
+
+                {/* Expanded State */}
+                <motion.div
+                  animate={{ opacity: isExpanded ? 1 : 0 }}
+                  transition={{ duration: 0.3, delay: isExpanded ? 0.1 : 0 }}
+                  className="absolute inset-0 z-20 flex"
+                >
+                  <div className="relative w-1/2">
+                    <div className="absolute inset-0 bg-black/10" />
+                  </div>
+
+                  <div className="relative flex w-1/2 flex-col justify-center p-4">
+                    {leader.nameCard && (
+                      <CreditCard className="absolute top-3 right-3 h-5 w-5 text-white drop-shadow-md" />
+                    )}
+                    <div className="mb-3">
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-foreground shadow-sm">
+                        {leader.role}
+                      </span>
+                    </div>
+
+                    <h3
+                      className="text-lg font-bold"
+                      style={{
+                        transform: "rotate(-3deg)",
+                        textShadow: "-2px -2px 0 white, 2px -2px 0 white, -2px 2px 0 white, 2px 2px 0 white, 0 -2px 0 white, 0 2px 0 white, -2px 0 0 white, 2px 0 0 white",
+                        color: "#1e293b",
+                      }}
+                    >
+                      {leader.name}
+                    </h3>
+
+                    {leader.bio && (
+                      <p className="mt-3 text-xs font-bold leading-relaxed text-white/90" style={{ fontFamily: "var(--font-huninn)" }}>
                         {leader.bio}
                       </p>
                     )}

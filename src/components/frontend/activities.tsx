@@ -3,6 +3,19 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 
+function useSwipe(onLeft: () => void, onRight: () => void, threshold = 50) {
+  const startX = useRef(0)
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    startX.current = e.touches[0].clientX
+  }, [])
+  const onTouchEnd = useCallback((e: React.TouchEvent) => {
+    const diff = e.changedTouches[0].clientX - startX.current
+    if (diff < -threshold) onLeft()
+    else if (diff > threshold) onRight()
+  }, [onLeft, onRight, threshold])
+  return { onTouchStart, onTouchEnd }
+}
+
 const MACARON_COLORS = ["bg-mint", "bg-lavender", "bg-coral", "bg-peach", "bg-cream"]
 
 interface ActivityData {
@@ -47,6 +60,20 @@ export function Activities() {
     setActiveIndex(index)
     resetTimer()
   }
+
+  const goNext = useCallback(() => {
+    setDirection(1)
+    setActiveIndex((prev) => (prev + 1) % activities.length)
+    resetTimer()
+  }, [activities.length, resetTimer])
+
+  const goPrev = useCallback(() => {
+    setDirection(-1)
+    setActiveIndex((prev) => (prev - 1 + activities.length) % activities.length)
+    resetTimer()
+  }, [activities.length, resetTimer])
+
+  const activitySwipe = useSwipe(goNext, goPrev)
 
   if (activities.length === 0 || !activeActivity) return null
 
@@ -115,7 +142,7 @@ export function Activities() {
         </div>
 
         {/* Right Side: Large Image Container with photo frame */}
-        <div className="relative flex-1 bg-white p-3 shadow-md">
+        <div className="relative flex-1 bg-white p-3 shadow-md" {...activitySwipe}>
           <div className="relative h-full w-full overflow-hidden border border-slate-100">
           <AnimatePresence initial={false} custom={direction}>
             <motion.div
